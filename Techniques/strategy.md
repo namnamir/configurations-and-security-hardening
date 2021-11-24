@@ -1,6 +1,6 @@
 # All Online Accounts <sup><sub>(Instagram, Telegram, WhatsApp, etc.)</sub></sup>
 - Have a password manager
-- Setup MFA on the account
+- Setup [MFA](MFA.md) on the account
 - Setup physical keys
 - Backup frequently on a secure environment
 
