@@ -1,5 +1,5 @@
 # Make Windows 10 or Windows 11 Lighter and Faster
-### 1. Change the power and screen settings
+### 1. Change the power and screen settings <sup><sub>([More Info](https://ss64.com/nt/powercfg.html))</sub></sup>
 The following PowerShell script will do it.
 ```powershell
 # change the power plan to Balanced
@@ -17,8 +17,23 @@ Powercfg /Change standby-timeout-dc 0;
 Press `Ctrl + Shift + Esc` to open the *Task Manager* and move to the *Startup* pane.
 
 ### 3. Turn off Windows Notifications
+The following PowerShell script will do it.
+```PowerShell
+Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications" -Name "ToastEnabled" -Type DWord -Value 0
+```
 
-### 4. Uninstall unnecessary programs
+### 4. Uninstall unnecessary programs and Windows bloatware
+Firstly, there there is a need to check installed applications in "Add & Remove Programs" and uninstall unwanted ones. Later, After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
+
+Alternatively, use the following script to see bloatware.
+```PowerShell
+# get the list of bloatware
+DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
+
+# remove them one by one
+DISM /Online /Remove-ProvisionedAppxPackage /PackageName:<PACKAGE_NAME>
+```
 
 ### 5. Turn off search indexing <sup><sub>([More Info](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-service))</sub></sup>
 Go to *Services* (`services.msc`) and find *Windows Search*. The following PowerShell script will do it.
@@ -38,18 +53,8 @@ Go to *Personalization* -> *Colors* -> *Transparency effects* and trun it off. T
 ```PowerShell
 Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name EnableTransparency -Value 0
 ```
-
-### 8. Remove Windows bloatware
-After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
-
-Alternatively, use the following script to see bloatware.
-```PowerShell
-# get the list of bloatware
-DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
-
-# remove them one by one
-DISM /Online /Remove-ProvisionedAppxPackage /PackageName:<PACKAGE_NAME>
-```
+### 8. Remove backgrounds
+Change the background to a solid color
 
 ### 9. Repair Windows (if needed) without reinstallation
 ```PowerShell
