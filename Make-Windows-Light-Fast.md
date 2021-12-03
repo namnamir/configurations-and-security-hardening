@@ -31,7 +31,9 @@ Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\P
 ```
 
 ### 8. Remove Windows bloatware
-Use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware. Alternatively, use the following script to see bloatware.
+After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
+
+Alternatively, use the following script to see bloatware.
 ```PowerShell
 # get the list of bloatware
 DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
