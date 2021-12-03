@@ -1,8 +1,17 @@
 # Make Windows 10 or Windows 11 Lighter and Faster
-### 1. Change the power settings
-Chenge the power plan to balanced mode. The following PowerShell script will do it.
+### 1. Change the power and screen settings
+The following PowerShell script will do it.
 ```powershell
+# change the power plan to Balanced
 powercfg.exe /s "381b4222-f694-41f0-9685-ff5bb260df2e";
+
+# set the screen off for AC and DC to 5 mins
+Powercfg /Change monitor-timeout-ac 5;
+Powercfg /Change monitor-timeout-dc 5;
+
+# set the standby for AC and DC to Never
+Powercfg /Change standby-timeout-ac 0;
+Powercfg /Change standby-timeout-dc 0;
 ```
 ### 2. Disable unnecessary startup programs
 Press `Ctrl + Shift + Esc` to open the *Task Manager* and move to the *Startup* pane.
