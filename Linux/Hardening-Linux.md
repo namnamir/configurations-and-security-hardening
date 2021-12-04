@@ -1,5 +1,5 @@
 # Turn off SSH password authentication
-This method helps when the key pair authentication is in use. It prevents the brute-force attacks.
+This method helps when the [key pair authentication](/Linux/SSH-key.md) is in use. It prevents the brute-force attacks.
 ```bash
 # open the SSH configuration file
 sudo nano /etc/ssh/sshd_config
