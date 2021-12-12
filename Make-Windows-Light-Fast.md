@@ -19,8 +19,10 @@ Press `Ctrl + Shift + Esc` to open the *Task Manager* and move to the *Startup* 
 ### 3. Turn off Windows Notifications
 The following PowerShell script will do it.
 ```PowerShell
-Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications" -Name "ToastEnabled" -Type DWord -Value 0
+
+# it works just on Windows 10
+Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
 ```
 
 ### 4. Uninstall unnecessary programs and Windows bloatware
@@ -67,3 +69,4 @@ sfc /scannow
 
 # Resources
 - https://support.microsoft.com/en-us/windows/tips-to-improve-pc-performance-in-windows-b3b3ef5b-5953-fb6a-2528-4bbed82fba96
+- https://admx.help/HKCU/Software/Policies/Microsoft/Windows/Explorer
