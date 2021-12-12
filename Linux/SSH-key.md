@@ -8,10 +8,10 @@ ssh-keygen -t rsa
 The following command will copy the public key on the remote server.
 ```bash
 # # if the key pair is stored in ~/.ssh
-ssh-copy-id <USER>@<HOST>
+sudo ssh-copy-id <USER>@<HOST>
 
 # if the key pair is not stored in ~/.ssh
-ssh-copy-id -i ~/.ssh/id_rsa.pub <USER>@<HOST>
+sudo ssh-copy-id -i ~/.ssh/id_rsa.pub <USER>@<HOST>
 ```
 
 # Login to the remote server with the key pair
