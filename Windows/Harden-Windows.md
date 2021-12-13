@@ -18,3 +18,7 @@ SecEdit /configure /db "$Env:WinDir\security\local.sdb" /cfg $SecPolFile /areas 
 
 rm -Force $SecPolFile -Confirm:$False
 ```
+# Add MFA to the (RDP) Login with DUO
+[DUO](https://duo.com/editions-and-pricing) provides Windows (RDP) MFA login for free (up to 10 users). It will act against any external attack on Windows systems specially when they are publically available.
+
+Follow the provided [instruction](https://duo.com/docs/rdp) and easily set it up on each device, if there is no Active Directory (AD). Then, setup users on DUO, enrole them (send the invitation to setup their devices), and it should work.
