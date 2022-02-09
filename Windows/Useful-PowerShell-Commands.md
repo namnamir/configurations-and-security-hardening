@@ -20,3 +20,12 @@ Rename-LocalUser -Name <CURRENT_USERNAME> -NewName <NEW_USERNAME>
 ```PowerShell
 Rename-Computer -ComputerName $env:COMPUTERNAME -NewName <NEW_COMPUTERNAME>
 ```
+
+# Detect Services, e.g., Sysmon
+```PowerShell
+Get-CimInstance win32_service -Filter "Description = 'System Monitor service'"
+
+# or
+
+Get-Service | where-object {$_.DisplayName -like "*sysm*"}
+```
