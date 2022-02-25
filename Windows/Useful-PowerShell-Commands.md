@@ -11,6 +11,18 @@ New-NetFirewallRule -DisplayName 'RDPPORTLatest-TCP-In' -Profile 'Public' -Direc
 New-NetFirewallRule -DisplayName 'RDPPORTLatest-UDP-In' -Profile 'Public' -Direction Inbound -Action Allow -Protocol UDP -LocalPort $portvalue 
 ```
 
+# Create a New User
+```PowerShell
+# set a password
+$Password = Read-Host -AsSecureString
+
+# create a new user
+New-LocalUser <NEW_USERNAME> -Password $Password
+
+# add to a group
+Add-LocalGroupMember -Group "Administrators" -Member <NEW_USERNAME>
+```
+
 # Rename Local Username
 ```PowerShell
 Rename-LocalUser -Name <CURRENT_USERNAME> -NewName <NEW_USERNAME>
