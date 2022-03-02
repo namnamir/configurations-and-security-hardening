@@ -41,3 +41,6 @@ Get-CimInstance win32_service -Filter "Description = 'System Monitor service'"
 
 Get-Service | where-object {$_.DisplayName -like "*sysm*"}
 ```
+
+# Other Useful Commands
+11
