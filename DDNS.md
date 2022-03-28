@@ -19,14 +19,16 @@ To do so, there is a need to get the an API token:
 3. Select the zone (domain name).
 
 ### Use the API on Linux
-You can define a cron job by `crontab -e` to run the following Bash script frequently.
+1. Save the following script in a file, e.g. `cloudflare.sh`.
+2. Make it executable by `chmod +x /path/to/cloudflare.sh`.
+3. Run `crontab -e` and add a line like `@weekly /path/to/cloudflare.sh` to the end of the file to run the script periodically. Use tools like [Crontab Guru](https://crontab.guru/) to define the frequency properly.
 ```bash
 #!/bin/bash
 # based on https://gist.github.com/Tras2/cba88201b17d765ec065ccbedfb16d9a
 # initial data; they need to be filled by the user
 ## API token; e.g. FErsdfklw3er59dUlDce44-3D43dsfs3sddsFoD3
 api_token=<YOUR_API_TOKEN>
-## email address associated with the Cloudflare account; e.g. email@gmail.com
+## the email address associated with the Cloudflare account; e.g. email@gmail.com
 email=<YOUR_EMAIL>
 ## the zone (domain) should be modified; e.g. example.com
 zone_name=<YOUR_DOMAIN>
@@ -55,7 +57,7 @@ then
                    -H "Authorization: Bearer $api_token" \
               | jq -r '{"result"}[] | .[0] | .id'
              )
-    # check if the zone ID is 
+    # check if the zone ID is avilable
     if [ $zone_id ]
     then
         # check if there is any IP version 4
@@ -80,7 +82,7 @@ then
                 # write the result
                 echo -e "\033[0;32m [+] The IPv4 is successfully set on Cloudflare as the A Record with the value of:    $dns_record_a_ip"
             else
-                echo -e "\033[0;37m [~] The current IPv4 and DNS record IPv4 are the same; there is no need to apply it."
+                echo -e "\033[0;37m [~] The current IPv4 and  the existing on on Cloudflare are the same; there is no need to apply it."
             fi
         fi
             
@@ -106,14 +108,14 @@ then
                 # write the result
                 echo -e "\033[0;32m [+] The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $dns_record_aaaa_ip"
             else
-                echo -e "\033[0;37m [~] The current IPv6 and DNS record IPv6 are the same; there is no need to apply it."
+                echo -e "\033[0;37m [~] The current IPv6 address and the existing on on Cloudflare are the same; there is no need to apply it."
             fi
         fi  
     else
-        echo -e "\033[0;31m [-] There is a problem with getting the Zone ID. Check if the Zone Name is correct."
+        echo -e "\033[0;31m [-] There is a problem with getting the Zone ID (subdomain) or the email address (username). Check them and try again."
     fi
 else
-    echo -e "\033[0;31m [-] There is a problem with either the username (email), the API token, or the zone (domain name). Check them and try again."
+    echo -e "\033[0;31m [-] There is a problem with either the API token. Check it and try again."
 fi
 ```
 
