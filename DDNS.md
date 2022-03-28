@@ -24,13 +24,13 @@ You can define a cron job by `crontab -e` to run the following Bash script frequ
 #!/bin/bash
 # based on https://gist.github.com/Tras2/cba88201b17d765ec065ccbedfb16d9a
 # initial data; they need to be filled by the user
-## API token
+## API token; e.g. FErsdfklw3er59dUlDce44-3D43dsfs3sddsFoD3
 api_token=<YOUR_API_TOKEN>
-## email address associated with the Cloudflare account
+## email address associated with the Cloudflare account; e.g. email@gmail.com
 email=<YOUR_EMAIL>
-## the zone (domain) should be modified
+## the zone (domain) should be modified; e.g. example.com
 zone_name=<YOUR_DOMAIN>
-## the dns record (sub-domain) should be modified
+## the dns record (sub-domain) should be modified; e.g. sub.example.com
 dns_record=<YOUR_SUB_DOMAIN>
 
 # get the basic data
@@ -42,8 +42,9 @@ user_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verif
           | jq -r '{"result"}[] | .id'
          )
 
-echo "Your IPv4 is: $ipv4"
-echo "Your IPv6 is: $ipv6"
+# write down IPv4 and/or IPv6
+if [ $ipv4 ]; then echo -e "\033[0;32m [+] Your public IPv4 address: $ipv4"; else echo -e "\033[0;33m [!] Unable to get any public IPv4 address."; fi
+if [ $ipv6 ]; then echo -e "\033[0;32m [+] Your public IPv6 address: $ipv6"; else echo -e "\033[0;33m [!] Unable to get any public IPv6 address."; fi
 
 # check if the user API is valid and the email is correct
 if [ $user_id ]
@@ -65,9 +66,8 @@ then
                                    -H "X-Auth-Email: $email" \
                                    -H "Authorization: Bearer $api_token"
                              )
-            # if the IPv6 exist
+            # if the IPv4 exist
             dns_record_a_ip=$(echo $dns_record_a_id |  jq -r '{"result"}[] | .[0] | .content')
-            echo "The set IPv4 on Cloudflare (A Record) is:    $dns_record_a_ip"
             if [ $dns_record_a_ip != $ipv4 ]
             then
                 # change the A record
@@ -77,11 +77,11 @@ then
                      -H "Authorization: Bearer $api_token" \
                      --data "{\"type\":\"A\",\"name\":\"$dns_record\",\"content\":\"$ipv4\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
+                # write the result
+                echo -e "\033[0;32m [+] The IPv4 is successfully set on Cloudflare as the A Record with the value of:    $dns_record_a_ip"
             else
-                echo "The current IPv4 and DNS record IPv4 are the same."
+                echo -e "\033[0;37m [~] The current IPv4 and DNS record IPv4 are the same; there is no need to apply it."
             fi
-        else
-            echo "Could not get your IPv4. Check if you have it; e.g. on https://ifconfig.co"
         fi
             
         # check if there is any IP version 6
@@ -94,7 +94,6 @@ then
                                 )
             # if the IPv6 exist
             dns_record_aaaa_ip=$(echo $dns_record_aaaa_id | jq -r '{"result"}[] | .[0] | .content')
-            echo "The set IPv6 on Cloudflare (AAAA Record) is: $dns_record_aaaa_ip"
             if [ $dns_record_aaaa_ip != $ipv6 ]
             then
                 # change the AAAA record
@@ -104,17 +103,17 @@ then
                      -H "Authorization: Bearer $api_token" \
                      --data "{\"type\":\"AAAA\",\"name\":\"$dns_record\",\"content\":\"$ipv6\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
+                # write the result
+                echo -e "\033[0;32m [+] The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $dns_record_aaaa_ip"
             else
-                echo "The current IPv6 and DNS record IPv6 are the same."
+                echo -e "\033[0;37m [~] The current IPv6 and DNS record IPv6 are the same; there is no need to apply it."
             fi
-        else
-            echo "Could not get your IPv6. Check if you have it; e.g. on https://ifconfig.co"
         fi  
     else
-        echo "There is a problem with getting the Zone ID. Check if the Zone Name is correct."
+        echo -e "\033[0;31m [-] There is a problem with getting the Zone ID. Check if the Zone Name is correct."
     fi
 else
-    echo "There is a problem with either the email or the password"
+    echo -e "\033[0;31m [-] There is a problem with either the username (email), the API token, or the zone (domain name). Check them and try again."
 fi
 ```
 
