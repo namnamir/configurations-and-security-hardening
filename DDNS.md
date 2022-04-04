@@ -42,6 +42,10 @@ if [ -z "${check_jq}" ]; then
   	exit
 fi
 
+# Check DNS Records Exists
+check_record_ipv4=$(dig -t a +short ${dns_record} | tail -n1)
+check_record_ipv6=$(dig -t aaaa +short ${dns_record} | tail -n1)
+
 # get the basic data
 ipv4=$(curl -s -X GET -4 https://ifconfig.co)
 ipv6=$(curl -s -X GET -6 https://ifconfig.co)
@@ -70,6 +74,11 @@ then
         # check if there is any IP version 4
         if [ $ipv4 ]
         then
+        	# Check A Record exists
+        	if [ -z "${check_record_ipv4}" ]; then
+  			  	echo -e "\033[0;31m [-] No A Record called ${dns_record}. This must be created first!"
+  				  exit
+			    fi
             dns_record_a_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?type=A&name=$dns_record"  \
                                    -H "Content-Type: application/json" \
                                    -H "X-Auth-Email: $email" \
@@ -96,6 +105,11 @@ then
         # check if there is any IP version 6
         if [ $ipv6 ]
         then
+        	# Check A Record exists
+          	if [ -z "${check_record_ipv6}" ]; then
+  			    	echo -e "\033[0;31m [-] No AAAA Record called ${dns_record}. This must be created first!"
+  				    exit
+			      fi
             dns_record_aaaa_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?type=AAAA&name=$dns_record"  \
                                       -H "Content-Type: application/json" \
                                       -H "X-Auth-Email: $email" \
