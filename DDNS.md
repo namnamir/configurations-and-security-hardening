@@ -35,6 +35,13 @@ zone_name=<YOUR_DOMAIN>
 ## the dns record (sub-domain) should be modified; e.g. sub.example.com
 dns_record=<YOUR_SUB_DOMAIN>
 
+# Check jq installed
+check_jq=$(which jq)
+if [ -z "${check_jq}" ]; then
+  	echo -e "\033[0;31m [-] jq not installed. jq must be created first!"
+  	exit
+fi
+
 # get the basic data
 ipv4=$(curl -s -X GET -4 https://ifconfig.co)
 ipv6=$(curl -s -X GET -6 https://ifconfig.co)
