@@ -35,6 +35,12 @@ zone_name=<YOUR_DOMAIN>
 ## the dns record (sub-domain) should be modified; e.g. sub.example.com
 dns_record=<YOUR_SUB_DOMAIN>
 
+# Check if already running
+if ps ax | grep $0 | grep -v $$ | grep bash | grep -v grep; then
+    echo -e "\033[0;31m [-] The script is already running."
+    exit 1
+fi
+
 # Check jq installed
 check_jq=$(which jq)
 if [ -z "${check_jq}" ]; then
