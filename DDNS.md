@@ -35,6 +35,23 @@ zone_name=<YOUR_DOMAIN>
 ## the dns record (sub-domain) should be modified; e.g. sub.example.com
 dns_record=<YOUR_SUB_DOMAIN>
 
+# Check if already running
+if ps ax | grep $0 | grep -v $$ | grep bash | grep -v grep; then
+    echo -e "\033[0;31m [-] The script is already running."
+    exit 1
+fi
+
+# Check jq installed
+check_jq=$(which jq)
+if [ -z "${check_jq}" ]; then
+  	echo -e "\033[0;31m [-] jq not installed. jq must be created first!"
+  	exit
+fi
+
+# Check DNS Records Exists
+check_record_ipv4=$(dig -t a +short ${dns_record} | tail -n1)
+check_record_ipv6=$(dig -t aaaa +short ${dns_record} | tail -n1)
+
 # get the basic data
 ipv4=$(curl -s -X GET -4 https://ifconfig.co)
 ipv6=$(curl -s -X GET -6 https://ifconfig.co)
@@ -63,6 +80,11 @@ then
         # check if there is any IP version 4
         if [ $ipv4 ]
         then
+        	# Check A Record exists
+        	if [ -z "${check_record_ipv4}" ]; then
+  			  	echo -e "\033[0;31m [-] No A Record called ${dns_record}. This must be created first!"
+  				  exit
+			    fi
             dns_record_a_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?type=A&name=$dns_record"  \
                                    -H "Content-Type: application/json" \
                                    -H "X-Auth-Email: $email" \
@@ -80,15 +102,20 @@ then
                      --data "{\"type\":\"A\",\"name\":\"$dns_record\",\"content\":\"$ipv4\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
                 # write the result
-                echo -e "\033[0;32m [+] The IPv4 is successfully set on Cloudflare as the A Record with the value of:    $dns_record_a_ip"
+                echo -e "\033[0;32m [+] Updated: The IPv4 is successfully set on Cloudflare as the A Record with the value of: $dns_record_a_ip"
             else
-                echo -e "\033[0;37m [~] The current IPv4 and  the existing on on Cloudflare are the same; there is no need to apply it."
+                echo -e "\033[0;37m [~] No change: The current IPv4 address matches Cloudflare"
             fi
         fi
             
         # check if there is any IP version 6
         if [ $ipv6 ]
         then
+        	# Check A Record exists
+          	if [ -z "${check_record_ipv6}" ]; then
+  			    	echo -e "\033[0;31m [-] No AAAA Record called ${dns_record}. This must be created first!"
+  				    exit
+			      fi
             dns_record_aaaa_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?type=AAAA&name=$dns_record"  \
                                       -H "Content-Type: application/json" \
                                       -H "X-Auth-Email: $email" \
@@ -106,9 +133,9 @@ then
                      --data "{\"type\":\"AAAA\",\"name\":\"$dns_record\",\"content\":\"$ipv6\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
                 # write the result
-                echo -e "\033[0;32m [+] The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $dns_record_aaaa_ip"
+                echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $dns_record_aaaa_ip"
             else
-                echo -e "\033[0;37m [~] The current IPv6 address and the existing on on Cloudflare are the same; there is no need to apply it."
+                echo -e "\033[0;37m [~] No change: The current IPv6 address matches Cloudflare."
             fi
         fi  
     else
