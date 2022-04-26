@@ -102,7 +102,7 @@ then
                      --data "{\"type\":\"A\",\"name\":\"$dns_record\",\"content\":\"$ipv4\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
                 # write the result
-                echo -e "\033[0;32m [+] Updated: The IPv4 is successfully set on Cloudflare as the A Record with the value of: $dns_record_a_ip"
+                echo -e "\033[0;32m [+] Updated: The IPv4 is successfully set on Cloudflare as the A Record with the value of: $ipv4"
             else
                 echo -e "\033[0;37m [~] No change: The current IPv4 address matches Cloudflare"
             fi
@@ -133,7 +133,7 @@ then
                      --data "{\"type\":\"AAAA\",\"name\":\"$dns_record\",\"content\":\"$ipv6\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
                 # write the result
-                echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $dns_record_aaaa_ip"
+                echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $ipv6"
             else
                 echo -e "\033[0;37m [~] No change: The current IPv6 address matches Cloudflare."
             fi
