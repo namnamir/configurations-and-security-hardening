@@ -44,8 +44,8 @@ fi
 # Check if jq is installed
 check_jq=$(which jq)
 if [ -z "${check_jq}" ]; then
-      echo -e "\033[0;31m [-] jq not installed. jq must be created first!"
-      exit
+    echo -e "\033[0;31m [-] jq is not installed. It should be created first!"
+    exit 1
 fi
 
 # Check if DNS Records Exists
@@ -66,8 +66,7 @@ if [ $ipv4 ]; then echo -e "\033[0;32m [+] Your public IPv4 address: $ipv4"; els
 if [ $ipv6 ]; then echo -e "\033[0;32m [+] Your public IPv6 address: $ipv6"; else echo -e "\033[0;33m [!] Unable to get any public IPv6 address."; fi
 
 # check if the user API is valid and the email is correct
-if [ $user_id ]
-then
+if [ $user_id ]; then
     zone_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$zone_name&status=active" \
                    -H "Content-Type: application/json" \
                    -H "X-Auth-Email: $email" \
@@ -75,15 +74,13 @@ then
               | jq -r '{"result"}[] | .[0] | .id'
              )
     # check if the zone ID is avilable
-    if [ $zone_id ]
-    then
+    if [ $zone_id ]; then
         # check if there is any IP version 4
-        if [ $ipv4 ]
-        then
+        if [ $ipv4 ]; then
             # Check if A Record exists
             if [ -z "${check_record_ipv4}" ]; then
                 echo -e "\033[0;31m [-] No A Record is set for ${dns_record}. This should be created first!"
-                exit
+                exit 1
             fi
             dns_record_a_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?type=A&name=$dns_record"  \
                                    -H "Content-Type: application/json" \
@@ -92,8 +89,7 @@ then
                              )
             dns_record_a_ip=$(echo $dns_record_a_id |  jq -r '{"result"}[] | .[0] | .content')
             # if a new IPv4 exist; current IPv4 is different with the actual IPv4
-            if [ $dns_record_a_ip != $ipv4 ]
-            then
+            if [ $dns_record_a_ip != $ipv4 ]; then
                 # change the A record
                 curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$(echo $dns_record_a_id | jq -r '{"result"}[] | .[0] | .id')" \
                      -H "Content-Type: application/json" \
@@ -103,8 +99,10 @@ then
                 | jq -r '.errors'
                 # write the result
                 echo -e "\033[0;32m [+] Updated: The IPv4 is successfully set on Cloudflare as the A Record with the value of: $ipv4."
+                exit 0
             else
                 echo -e "\033[0;37m [~] No change: The current IPv4 address matches Cloudflare."
+                exit 0
             fi
         fi
             
@@ -114,7 +112,7 @@ then
             # Check A Record exists
             if [ -z "${check_record_ipv6}" ]; then
                 echo -e "\033[0;31m [-] No AAAA Record called ${dns_record}. This must be created first!"
-                exit
+                exit 1
             fi
             dns_record_aaaa_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?type=AAAA&name=$dns_record"  \
                                       -H "Content-Type: application/json" \
@@ -123,8 +121,7 @@ then
                                 )
             dns_record_aaaa_ip=$(echo $dns_record_aaaa_id | jq -r '{"result"}[] | .[0] | .content')
             # if a new IPv6 exist; current IPv6 is different with the actual IPv6
-            if [ $dns_record_aaaa_ip != $ipv6 ]
-            then
+            if [ $dns_record_aaaa_ip != $ipv6 ]; then
                 # change the AAAA record
                 curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$(echo $dns_record_aaaa_id | jq -r '{"result"}[] | .[0] | .id')" \
                      -H "Content-Type: application/json" \
@@ -134,15 +131,19 @@ then
                 | jq -r '.errors'
                 # write the result
                 echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $ipv6."
+                exit 0
             else
                 echo -e "\033[0;37m [~] No change: The current IPv6 address matches Cloudflare."
+                exit 0
             fi
         fi  
     else
         echo -e "\033[0;31m [-] There is a problem with getting the Zone ID (sub-domain) or the email address (username). Check them and try again."
+        exit 1
     fi
 else
     echo -e "\033[0;31m [-] There is a problem with either the API token. Check it and try again."
+    exit 1
 fi
 ```
 
