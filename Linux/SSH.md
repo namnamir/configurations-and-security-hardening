@@ -36,6 +36,8 @@ sudo apt install openssh-client
 
 # check the version
 ssh -v localhost
+# OR
+ssh -V
 ```
 
 ## Create the key pair (public and private)
