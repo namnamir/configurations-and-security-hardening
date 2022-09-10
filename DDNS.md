@@ -19,7 +19,7 @@ To do so, there is a need to get the an API token:
 3. Select the zone (domain name).
 
 ### Use the API on Linux
-1. Save the following script in a file, e.g. `cloudflare.sh`.
+1. Save the following script in a file, e.g. `cloudflare.sh`. For the single run use `bash cloudflare.sh` rather than `sh` as `sh` doesn't support `[[]]` in the **IF statement**. 
 2. Make it executable by `chmod +x /path/to/cloudflare.sh`.
 3. Run `crontab -e` and add a line like `@weekly /path/to/cloudflare.sh` to the end of the file to run the script periodically. Use tools like [Crontab Guru](https://crontab.guru/) to define the frequency properly.
 ```bash
@@ -36,7 +36,7 @@ zone_name=<YOUR_DOMAIN>
 dns_record=<YOUR_SUB_DOMAIN>
 
 # Check if the script is already running
-if ps ax | grep $0 | grep -v $$ | grep bash | grep -v grep; then
+if [ ps ax | grep $0 | grep -v $$ | grep bash | grep -v grep ]; then
     echo -e "\033[0;31m [-] The script is already running."
     exit 1
 fi
@@ -44,8 +44,25 @@ fi
 # Check if jq is installed
 check_jq=$(which jq)
 if [ -z "${check_jq}" ]; then
-    echo -e "\033[0;31m [-] jq is not installed. It should be created first!"
+    echo -e "\033[0;31m [-] jq is not installed. Install it by 'sudo apt install jq'."
     exit 1
+fi
+
+# check the subdomain
+# check if the dns_record field (subdomain) contains dot
+if [[ $dns_record == *.* ]]; then
+    # if the zone_name field (domain) is not in the dns_record
+    if [[ $dns_record != *.$zone_name ]]; then
+        echo -e "\033[0;31m [-] The Zone in DNS Record does not match the defined Zone; check it and try again."
+        exit 1
+    fi
+# if the dns_record (subdomain) is not complete and contains invalid characters
+elif ! [[ $dns_record =~ [\w\d\-]+ ]]; then
+    echo -e "\033[0;31m [-] The DNS Record contains illegal charecters, i.e., @, %, *, _, etc.; fix it and run the script again."
+    exit 1
+# if the dns_record (subdomain) is not complete, complete it
+else
+    dns_record="$dns_record.$zone_name"
 fi
 
 # Check if DNS Records Exists
@@ -105,7 +122,7 @@ if [ $user_id ]; then
                 exit 0
             fi
         fi
-            
+
         # check if there is any IP version 6
         if [ $ipv6 ]
         then
@@ -133,10 +150,10 @@ if [ $user_id ]; then
                 echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $ipv6."
                 exit 0
             else
-                echo -e "\033[0;37m [~] No change: The current IPv6 address matches Cloudflare."
+                echo -e "\033[0;37m [~] No change: The current IPv6 address matches the existing records on Cloudflare."
                 exit 0
             fi
-        fi  
+        fi
     else
         echo -e "\033[0;31m [-] There is a problem with getting the Zone ID (sub-domain) or the email address (username). Check them and try again."
         exit 1
@@ -149,4 +166,3 @@ fi
 
 ### Use the API on Windows
 Use [this article](https://adamtheautomator.com/cloudflare-dynamic-dns/) to set it up on Windows.
-
