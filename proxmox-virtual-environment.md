@@ -1,3 +1,5 @@
+# Enable Nested Virtualization
+Change the process type to `Host` via `Hardware -> Process -> Type` in the VM settings.
 # Install Windows 10/11 on Proxmox Virtual Environment (PVE) 7.1-5
 ## 0- General
 ![General Page for Windows 11](img/pve-win11-general.png)
