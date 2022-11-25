@@ -1,4 +1,4 @@
-# Snapd
+# Installation through Snapd
 ## Install Certbot
 ```bash
 # remove exisitng Certbot
