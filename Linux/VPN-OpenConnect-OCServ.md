@@ -25,13 +25,12 @@ sudo nano /etc/ocserv/ocserv.conf
 
 Paste the following lines into the config file. Remember to check the certificate address and the domain.
 ```ini
-
 # Authentication method
-#auth = "pam"
-#auth = "pam[gid-min=1000]"
-auth = "plain[passwd=/etc/ocserv/ocpasswd]"
-#auth = "certificate"
-#auth = "radius[config=/etc/radiusclient/radiusclient.conf,groupconfig=true]"
+# auth = "pam"
+# auth = "pam[gid-min=1000]"
+# auth = "plain[passwd=/etc/ocserv/ocpasswd]"
+# auth = "certificate"
+auth = "radius[config=/etc/radiusclient/radiusclient.conf,groupconfig=true]"
 
 # TCP and UDP port number
 tcp-port = 443
@@ -45,6 +44,8 @@ run-as-group = daemon
 socket-file = /run/ocserv.socket
 
 # The key and the certificates of the server
+# server-cert = /etc/ocserv/certs/server-cert.pem
+# server-key = /etc/ocserv/certs/server-key.pem
 server-cert = /etc/letsencrypt/live/example.com/fullchain.pem
 server-key = /etc/letsencrypt/live/example.com/privkey.pem
 
@@ -55,7 +56,7 @@ ca-cert = /etc/ssl/certs/ssl-cert-snakeoil.pem
 isolate-workers = true
 
 # A banner to be displayed on clients
-banner = "Wel Der"
+# banner = "Wel Der"
 
 # Limit the number of clients
 max-clients = 128
@@ -64,7 +65,10 @@ max-clients = 128
 max-same-clients = 2
 
 # When the server receives connections from a proxy
-listen-proxy-proto = true
+# listen-proxy-proto = true
+
+# Limit the number of client connections to one every millisecond
+rate-limit-ms = 100
 
 # Stats reset time
 server-stats-reset-time = 604800
@@ -85,7 +89,7 @@ switch-to-tcp-timeout = 25
 try-mtu-discovery = true
 
 # Certificate OID
-cert-user-oid = 0.9.2342.19200300.100.1.1
+cert-user-oid = 2.5.4.3
 
 # Uncomment this to enable compression negotiation (LZS, LZ4).
 compression = true
@@ -112,13 +116,13 @@ min-reauth-time = 300
 max-ban-score = 80
 
 # The time (in seconds) that all score kept for a client is reset
-ban-reset-time = 300
+ban-reset-time = 1200
 
 # Cookie timeout (in seconds)
 cookie-timeout = 300
 
 # Whether roaming is allowed
-deny-roaming = false
+deny-roaming = true
 
 # ReKey time (in seconds)
 rekey-time = 172800
@@ -151,11 +155,15 @@ ipv6-subnet-prefix = 64
 tunnel-all-dns = true
 
 # The advertized DNS server
-dns = 8.8.8.8
 dns = 1.1.1.1
+dns = 8.8.8.8
+dns = 8.8.4.4
 
 # Prior to leasing any IP from the pool ping it to verify that it is not in use by another (unrelated to this server) host.
 ping-leases = false
+
+# 
+route = default
 
 # This option will enable the pre-draft-DTLS version of DTLS
 cisco-client-compat = true
