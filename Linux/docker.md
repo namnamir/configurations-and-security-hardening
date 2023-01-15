@@ -40,4 +40,7 @@ docker rm CONTAINER_ID
 
 # remove a docker image
 docker rmi IMAGE_ID
+
+# show the logs of a docker container
+docker logs -f CONTAINER_ID
 ```
