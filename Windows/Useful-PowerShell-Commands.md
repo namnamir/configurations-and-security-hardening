@@ -1,4 +1,12 @@
 # Remote Connection (RDP)
+Enable RDP
+```powershell
+# enable the remote desktop protocol
+Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+
+# enable remote desktop through the Windows Firewall
+Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+```
 Get and/or change the RDP port
 ```powershell
 # To get the RDP port
