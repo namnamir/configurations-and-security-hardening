@@ -24,11 +24,15 @@ Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNoti
 # it works just on Windows 10
 Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
 ```
+#### # Do it Manually
+If you would prefer to do it manually, follow the following steps and change the settings:
+-  `Settings -> System -> Notifications -> Additional settings` 
+-  `Settings -> System -> Notifications -> Notifications from apps and other senders`.
 
-### 4. Uninstall unnecessary programs and Windows bloatware
-Firstly, there there is a need to check installed applications in "Add & Remove Programs" and uninstall unwanted ones. Later, After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
+### 4. Debloat Windows (Uninstall Unnecessary Programs)
+Firstly, there there is a need to check installed applications in "Add & Remove Programs" and uninstall unwanted ones.
 
-Alternatively, use the following script to see bloatware.
+Use the following script to see bloatware.
 ```PowerShell
 # get the list of bloatware
 DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
@@ -36,6 +40,13 @@ DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
 # remove them one by one
 DISM /Online /Remove-ProvisionedAppxPackage /PackageName:<PACKAGE_NAME>
 ```
+#### 4.1. Use Chris Titus Tech's Windows Utility <sup><sub>([Github](https://github.com/ChrisTitusTech/winutil))</sub></sup>
+Run the following command and select desired settings.
+```powershell
+iwr -useb https://christitus.com/win | iex
+```
+#### 4.2. Use Chris Titus Tech's Windows Utility <sup><sub>([Github](https://github.com/Sycnex/Windows10Debloater))</sub></sup>
+After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
 
 ### 5. Turn off search indexing <sup><sub>([More Info](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-service))</sub></sup>
 Go to *Services* (`services.msc`) and find *Windows Search*. The following PowerShell script will do it.
@@ -44,21 +55,27 @@ Stop-Service -Name WSearch;
 Set-Service  -Name WSearch -StartupType Disabled;
 ```
 
-### 6. Disable shadows, animations, and visual effects
-Go to *System Properties* (`sysdm.cpl`) -> *Advanced* -> *Performance* and change the setting to "Adjust to best performance". The following PowerShell script will do it.
+### 6. Change the Visual Settings
+#### 6.1. Disable **Shadows, Animations, and Visual Effects**.
 ```PowerShell
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' -Name 'VisualFXSetting' -Value 2
 ```
-
-### 7. Disable transparency effect
-Go to *Personalization* -> *Colors* -> *Transparency effects* and trun it off. The following PowerShell script will do it.
+#### 6.2. Disable **Transparency Effects**
 ```PowerShell
 Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name EnableTransparency -Value 0
 ```
-### 8. Remove backgrounds
-Change the background to a solid color
+#### 6.3. Remove Backgrounds
+#### # Do them Manually
+If you would prefer to do it manually, follow the following steps and change the settings:
+-  `Advanced System Settings (sysdm.cpl) -> Performance -> Settings -> Adjust for best performance`
+-  `Settings -> Accessibility -> Transparency effects   OR   Settings -> Personalization -> Colors -> Transparency effects`
+-  `Settings -> Accessibility -> Animation effects`
+-  `Settings -> Personalization -> Lock screen -> Lock screen status -> None`
+-  `Settings -> Personalization -> Lock screen -> Show the lock screen background picture on the sign-in screen`
+-  `Settings -> Personalization -> Lock screen -> Personalize your lock screen -> Picture`
+-  `Settings -> Personalization -> Lock screen -> Personalize your lock screen -> Get the fun facts, tips, tricks, and more on your lock screen`
 
-### 9. Repair Windows (if needed) without reinstallation
+### 7. Repair Windows (if needed) without reinstallation
 ```PowerShell
 # Deployment Image Service and Management Tool (DISM)
 DISM /Online /Cleanup-image /Restorehealth
@@ -67,6 +84,21 @@ DISM /Online /Cleanup-image /Restorehealth
 sfc /scannow
 ```
 
-# Resources
+### 9. Others
+#### 9.1. Disable DiagTracK
+To stop and disable the User Experiences and Telemetry (Diagnostics Tracking or DiagTracK) run following commands.
+```PowerShell
+stop-service diagtrack
+set-service diagtrack -startuptype disabled
+```
+#### 9.2. Disable Auto Updates for Maps
+- `Settings -> Apps -> Offline maps -> Map updates`
+#### 9.3. Disable AutoPlay Feature for Devices
+- `Settings -> Bluetooth & devices -> AutoPlay`
+
+
+---
+**Resources:**
 - https://support.microsoft.com/en-us/windows/tips-to-improve-pc-performance-in-windows-b3b3ef5b-5953-fb6a-2528-4bbed82fba96
 - https://admx.help/HKCU/Software/Policies/Microsoft/Windows/Explorer
+- https://gist.github.com/ilyaigpetrov/03506150e0a3a4104a24f7e519d42078
