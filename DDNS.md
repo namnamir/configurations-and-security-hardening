@@ -27,16 +27,16 @@ To do so, there is a need to get the an API token:
 # based on https://gist.github.com/Tras2/cba88201b17d765ec065ccbedfb16d9a
 # initial data; they need to be filled by the user
 ## API token; e.g. FErsdfklw3er59dUlDce44-3D43dsfs3sddsFoD3
-api_token=<YOUR_API_TOKEN>
+api_token="YOUR_API_TOKEN"
 ## the email address associated with the Cloudflare account; e.g. email@gmail.com
-email=<YOUR_EMAIL>
+email="YOUR_EMAIL"
 ## the zone (domain) should be modified; e.g. example.com
-zone_name=<YOUR_DOMAIN>
+zone_name="YOUR_DOMAIN"
 ## the dns record (sub-domain) that needs to be modified; e.g. sub.example.com
-dns_record=<YOUR_SUB_DOMAIN>
+dns_record="YOUR_SUB_DOMAIN"
 
 # Check if the script is already running
-if [ ps ax | grep $0 | grep -v $$ | grep bash | grep -v grep ]; then
+if ps ax | grep "$0" | grep -v "$$" | grep bash | grep -v grep > /dev/null; then
     echo -e "\033[0;31m [-] The script is already running."
     exit 1
 fi
@@ -57,7 +57,7 @@ if [[ $dns_record == *.* ]]; then
         exit 1
     fi
 # if the dns_record (subdomain) is not complete and contains invalid characters
-elif ! [[ $dns_record =~ [\w\d\-]+ ]]; then
+elif ! [[ $dns_record =~ ^[a-zA-Z0-9-]+$ ]]; then
     echo -e "\033[0;31m [-] The DNS Record contains illegal charecters, i.e., @, %, *, _, etc.; fix it and run the script again."
     exit 1
 # if the dns_record (subdomain) is not complete, complete it
