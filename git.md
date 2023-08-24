@@ -13,6 +13,7 @@
   - Whenever you switch to another _branch_ with uncommitted changes (or new files added) in your working folder, these uncommitted changes will also be carried to the new branch that you switch to. Changes that you commit will be committed to the newly switched branch.
 - Different _branches_ can be **merged** into any one branch as long as they belong to the same repository.
 - A Git **tag** is used to label and mark a specific commit in the history. Tags are commonly used to indicate release versions, with the release name (i.e., v1.0) being the name of the tag.
+- **Rebasing** in Git is the process of moving or combining a sequence of commits to a new base commit.
 ![Git](img/git.jpg)
 ![Git Flow](img/git-flow.png)
 
@@ -162,6 +163,18 @@ git checkout --track origin/<remote_branch_name>
 ### Merge <another_branch_name> to the current branch
 ### If we are currently on the "master" branch, it will merge <another_branch_name> into the "master" one.
 git merge <another_branch_name>
+```
+
+## Merging and Rebasing
+```bash
+### show the last 3 commits in the branch
+git rebase -i HEAD~3
+
+### it will open the file that allows us do the rebase
+### later we need to choose changes we like; the list is mentioned in the file
+### for instance, we can change the `pick 6de7085 [buffix/st-0000] fix testing` to
+### 'reword 6de7085 [buffix/st-0000] fix testing'. After the save, it will open a
+### new file to do the rename of the commit.
 ```
 
 ## Pushing Changes to the Repository
