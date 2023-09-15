@@ -94,10 +94,13 @@ git diff --name-only
 ### Show the difference of what is changed but not yet committed
 git diff --staged
 
+### Show the diff of 2 commits
+git diff <commit_hash_1> <commit_hash_2>
 
-####################
-### Commit changes #
-####################
+
+##################
+# Commit changes #
+##################
 ### Commit your staged content (changes) as a new commit snapshot
 git commit -m "Message for the commit."
 
@@ -163,6 +166,9 @@ git checkout --track origin/<remote_branch_name>
 ### Merge <another_branch_name> to the current branch
 ### If we are currently on the "master" branch, it will merge <another_branch_name> into the "master" one.
 git merge <another_branch_name>
+
+### Switch to a specific commit
+git checkout <commit_hash>
 ```
 
 ## Merging and Rebasing
@@ -201,6 +207,7 @@ git pull --all
 ```bash
 ### List the existing configuration
 git config -l
+git config --global list
 
 ### Open the global configuration file in a text editor for manual editing.
 git config --global --edit
@@ -236,7 +243,6 @@ git log
 
 ### show the commit log as a graph
 git log --graph --oneline
-
 
 ### See a specific commit
 git show <commit_id>
