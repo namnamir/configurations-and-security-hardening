@@ -1,24 +1,3 @@
-# Remote Connection (RDP)
-Enable RDP
-```powershell
-# enable the remote desktop protocol
-Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
-
-# enable remote desktop through the Windows Firewall
-Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-```
-Get and/or change the RDP port
-```powershell
-# To get the RDP port
-Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "PortNumber"
-
-# to change the RDP port
-$portvalue = 3390
-Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "PortNumber" -Value $portvalue 
-New-NetFirewallRule -DisplayName 'RDPPORTLatest-TCP-In' -Profile 'Public' -Direction Inbound -Action Allow -Protocol TCP -LocalPort $portvalue 
-New-NetFirewallRule -DisplayName 'RDPPORTLatest-UDP-In' -Profile 'Public' -Direction Inbound -Action Allow -Protocol UDP -LocalPort $portvalue 
-```
-
 # Create a New User
 ```PowerShell
 # set a password
