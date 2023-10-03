@@ -19,7 +19,10 @@ For example, a packet could be part of a new connection, or it could be part of 
 
 ## Tables and Chains
 The following diagram shows the flow of packets through the chains in various tables.
+![iptables chains and tables](img/firewall-routing-schema.png)
 ![iptables chains and tables](img/iptables.webp)
+![iptables chains and tables](img/ìptables.png)
+
 |Table|Chains|
 |-----|------|
 |`filter`|`INPUT`, `OUTPUT` & `FORWARD`|
