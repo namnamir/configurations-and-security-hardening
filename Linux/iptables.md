@@ -45,11 +45,12 @@ The following diagram shows the flow of packets through the chains in various ta
 |`-F`|`--flush`|Remove all rules|`iptables -F`<br>`iptables -F INPUT`|
 |`-s`|`--source`|Source Address|`iptables -A INPUT -s 1.1.1.1/24 -j DROP`|
 |`-d`|`--destination`|Destination Address|`iptables -A OUTPUT -d 1.1.1.1-1.1.1.20 -j ACCEPT`|
-||`--sport`|Source Port|``|
+||`--sport`|Source Port|`iptables -A INPUT -p tcp -s 0/0 --sport 513:65535 -j ACCEPT`|
 ||`--dport`|Destination Port|`iptables -A INPUT -p tcp -m tcp --dport 22 -s 1.1.1.1 -j DROP`|
 |`-p`|`--protocol`|Protocol|`iptables -A FORWARD -p tcp -j REJECT`|
 |`-i`||Input Interface|`iptables -A INPUT -i lo -j ACCEPT`|
 |`-o`||Output Interface|`iptables -A OUTPUT -o wlan0 -d 1.1.1.1 -j DROP`|
+|`-m`|`--match`|Match|see below|
 
 ### Matching Parameters
 |Base|Parameter|Example|
@@ -57,6 +58,7 @@ The following diagram shows the flow of packets through the chains in various ta
 |`-m state`|`--state [STATE]`|`iptables -A INPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT`|
 |`-m iprange`|`--src-range [RANGE]`|`iptables -A OUTPUT -m iprange --src-range 1.1.1.1-1.1.1.20 -j ACCEPT`|
 |`-m multiport`|`--dport [PORTS]`<br>`--sport [PORTS]`|`iptables -A INPUT -p tcp --match multiport --dports 80,22,53 -j ACCEPT`|
+|`-m time`|`--timestart [TIME]`<br>`--timestop [TIME]`<br>`--days [DAYS]`|`iptables -A OUTPUT -p tcp -m time --timestart 09:00 --timestop 18:00 --days Mon,Thu,Fri -j ACCEPT`|
 
 ## Basic Commands
 ```bash
