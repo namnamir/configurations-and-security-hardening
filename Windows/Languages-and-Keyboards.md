@@ -18,7 +18,7 @@ Settings --> Time & Languages --> Language & Region
 ## Remove Unwanted Languages (e.g., British English - UK Language)
 Windows is stupid and, for unknown reasons (at least to me), add some languages you didn't ask for. Unsurprisingly, you can't remove them as you have not added them. 🙄
 
-You could take these steps to fix it.
+You could choose one of these options to fix it.
 
 ### Option 1: PowerShell Built-in Cmdlet
 The following command will add the US keyboard and language to the list. It seems stupid, but it will fix the issue. 😆
