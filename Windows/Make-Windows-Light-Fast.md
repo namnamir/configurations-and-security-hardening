@@ -1,4 +1,16 @@
 # Make Windows 10 or Windows 11 Lighter and Faster
+## Use Scripts
+Multiple scripts help you tweak your Windows; here is a list:
+### 1. [Sophia](https://github.com/farag2/Sophia-Script-for-Windows)
+### 2. [Windows Utility](https://github.com/ChrisTitusTech/winutil)
+After downloading the script, run the following command and select the desired settings.
+```powershell
+iwr -useb https://christitus.com/win | iex
+```
+### 3. [Debloater](https://github.com/Sycnex/Windows10Debloater)
+After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
+
+## Do it Manually
 ### 1. Change the power and screen settings <sup><sub>([More Info](https://ss64.com/nt/powercfg.html))</sub></sup>
 The following PowerShell script will do it.
 ```powershell
@@ -30,9 +42,9 @@ If you would prefer to do it manually, follow the following steps and change the
 -  `Settings -> System -> Notifications -> Notifications from apps and other senders`.
 
 ### 4. Debloat Windows (Uninstall Unnecessary Programs)
-Firstly, there there is a need to check installed applications in "Add & Remove Programs" and uninstall unwanted ones.
+Firstly, there is a need to check installed applications in "Add & Remove Programs" and uninstall unwanted ones.
 
-Use the following script to see bloatware.
+You can use the following script to see bloatware.
 ```PowerShell
 # get the list of bloatware
 DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
@@ -40,13 +52,6 @@ DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
 # remove them one by one
 DISM /Online /Remove-ProvisionedAppxPackage /PackageName:<PACKAGE_NAME>
 ```
-#### 4.1. Use Chris Titus Tech's Windows Utility <sup><sub>([Github](https://github.com/ChrisTitusTech/winutil))</sub></sup>
-Run the following command and select desired settings.
-```powershell
-iwr -useb https://christitus.com/win | iex
-```
-#### 4.2. Use Chris Titus Tech's Windows Utility <sup><sub>([Github](https://github.com/Sycnex/Windows10Debloater))</sub></sup>
-After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
 
 ### 5. Turn off search indexing <sup><sub>([More Info](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-service))</sub></sup>
 Go to *Services* (`services.msc`) and find *Windows Search*. The following PowerShell script will do it.
@@ -86,7 +91,7 @@ sfc /scannow
 
 ### 9. Others
 #### 9.1. Disable DiagTracK
-To stop and disable the User Experiences and Telemetry (Diagnostics Tracking or DiagTracK) run following commands.
+Run the following commands to stop and disable the User Experiences and Telemetry (Diagnostics Tracking or DiagTracK).
 ```PowerShell
 stop-service diagtrack
 set-service diagtrack -startuptype disabled
