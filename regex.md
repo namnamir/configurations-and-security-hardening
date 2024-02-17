@@ -29,6 +29,6 @@ This regex extracts URL elements, including scheme, user, subdomain, domain, tld
 
 ## Get IPv6
 ```regex
-(?i)(?:[\da-f]{0,4}:){1,7}(?:(?<ipv4>(?:(?:25[0-5]|2[0-4]\d|1?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|1?\d\d?))|[\da-f]{0,4})
+(?i)(?:[\da-f]{0,4}:){2,7}(?:(?<ipv4>(?:(?:25[0-5]|2[0-4]\d|1?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|1?\d\d?))|[\da-f]{0,4}|:)
 ```
-[Demo](https://regex101.com/r/uwPxJf/1) - Read More: [RIPE](https://www.ripe.net/participate/member-support/lir-basics/ipv6_reference_card.pdf)
+[Demo](https://regex101.com/r/uwPxJf/10) - Read More: [RIPE](https://www.ripe.net/participate/member-support/lir-basics/ipv6_reference_card.pdf)
