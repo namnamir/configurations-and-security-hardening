@@ -11,10 +11,11 @@ Subject:[\s\S]+Account\sName:\s+(?<Subject_Account>\S*)[\s\S]+New\sLogon:[\s\S]+
 
 ## Get URL
 Here is the [structure of a URL](https://en.wikipedia.org/wiki/URL):
+
 ![URL Structure](img/url-structure.jpg)
 ![URL Structure](img/url-structure.png)
 
-This regex extracts elements of a URL including scheme, user, subdomain, domain, tld, path, query, and fragmentation. It still needs some improvements because the 3rd group (subdomain, domain, tld) is not working perfectly.
+This regex extracts URL elements, including scheme, user, subdomain, domain, tld, path, query, and fragmentation. It still needs some improvements because the 3rd group (subdomain, domain, TLD) is not working perfectly.
 ```regex
 (?i)(?<scheme>http|https|ftp|sftp|sip|sips|file):\/\/(?:(?<username>[^`!@#$^&*()+=,:;'"{}\|\[\]\s\/\\]+)(?::(?<password>[^`!@#$^&*()+=,:;'"{}\|\[\]\s\/\\]+))?@)?(?:(?<ipv4>((?:(?:25[0-5]|2[0-4]\d|1?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|1?\d\d?)))|\[(?<ipv6>(?i)(?:[\da-f]{0,4}:){1,7}(?:(?<ipv4_in_ipv6>(?:(?:25[0-5]|2[0-4]\d|1?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|1?\d\d?))|[\da-f]{0,4}))\]|(?:(?<sub_domain>[^\s~`!@#$%^&*()_+=,.?:;'"{}\|\[\]\/\\]+\.)*(?<domain>[^\s~`!@#$%^&*()_+=,.?:;'"{}\|\[\]\/\\]+)(?<tld>\.[^\s~`!@#$%^&*()\-_+=,.?:;'"{}\|\[\]\/\\0-9]{2,})))+(?<port>:\d+)?(?:\/(?<path>\/?[^\s`@#$^&=.?"{}\\]+\/)*(?<file>[^\s`@#$^&=?"{}\/\\]+)?(?<query>\?[^\s`#$^"{}\\]+)*(?<fragment>#[^\s`$^&=?"{}\/\\]+)?)?
 ```
