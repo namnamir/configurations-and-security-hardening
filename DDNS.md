@@ -1,5 +1,5 @@
 # Best Dynamic DNS (DDNS) Services
-I have looked up mublitple DDNS services. Including the following ones:
+I have looked up multiple DDNS services. Including the following ones:
 - [No-IP](https://my.noip.com/)
 - [FreeDNS](https://freedns.afraid.org/)
 - [Duck DNS](https://www.duckdns.org/)
@@ -7,32 +7,32 @@ I have looked up mublitple DDNS services. Including the following ones:
 - And many others.
 
 
-All will provide you with a subdomain and let you set your IP on it *dynamically*. The problem is with the security of the IP. All might reveal the IP to the public. Therefore, finding a solution helping with the security is crucial.
+All will provide you with a subdomain and let you set your IP on it *dynamically*. The problem is with the security of the IP. All might reveal the IP to the public. Therefore, finding a solution to help with the security is crucial.
 
-I realized using Cloudflare Edit Zone API is a solution. Fortunately, there are scripts like [Cloudflare DDNS (Python 3)](https://github.com/timothymiller/cloudflare-ddns) that makes it easy; a PowerShell solution is provided [here](https://adamtheautomator.com/cloudflare-dynamic-dns/) as well.
+I realized using Cloudflare Edit Zone API is a solution. Fortunately, there are scripts like [Cloudflare DDNS (Python 3)](https://github.com/timothymiller/cloudflare-ddns) that make it easy; a PowerShell solution is provided [here](https://adamtheautomator.com/cloudflare-dynamic-dns/) as well.
 
 # Cloudflare
-There is a possibility to frequently update DNS records (A and/or AAAA) of a domain on Clouldflare via API.
-To do so, there is a need to get the an API token:
+There is a possibility to frequently update DNS records (A and/or AAAA) of a domain on Cloudflare via API.
+To do so, there is a need to get the API token:
 1. Go to the [My Account -> API Tokens](https://dash.cloudflare.com/profile/api-tokens).
-2. Create an API with the template "Edit Zone DNS".
+2. Create an API with the template "Edit Zone DNS."
 3. Select the zone (domain name).
 
 ### Use the API on Linux
-1. Save the following script in a file, e.g. `cloudflare.sh`. For the single run use `bash cloudflare.sh` rather than `sh` as `sh` doesn't support `[[]]` in the **IF statement**. 
+1. Save the following script in a file, e.g. `cloudflare.sh`. For the single run, use `bash cloudflare.sh` rather than `sh` as `sh` doesn't support `[[]]` in the **IF statement**. 
 2. Make it executable by `chmod +x /path/to/cloudflare.sh`.
 3. Run `crontab -e` and add a line like `@weekly /path/to/cloudflare.sh` to the end of the file to run the script periodically. Use tools like [Crontab Guru](https://crontab.guru/) to define the frequency properly.
 ```bash
 #!/bin/bash
 # based on https://gist.github.com/Tras2/cba88201b17d765ec065ccbedfb16d9a
-# initial data; they need to be filled by the user
+# Initial data; needs to be filled in by the user
 ## API token; e.g. FErsdfklw3er59dUlDce44-3D43dsfs3sddsFoD3
 api_token="YOUR_API_TOKEN"
-## the email address associated with the Cloudflare account; e.g. email@gmail.com
+## The email address associated with the Cloudflare account; e.g. email@gmail.com
 email="YOUR_EMAIL"
 ## the zone (domain) should be modified; e.g. example.com
 zone_name="YOUR_DOMAIN"
-## the dns record (sub-domain) that needs to be modified; e.g. sub.example.com
+## The DNS record (sub-domain) that needs to be modified; e.g. sub.example.com
 dns_record="YOUR_SUB_DOMAIN"
 
 # Check if the script is already running
@@ -48,30 +48,42 @@ if [ -z "${check_jq}" ]; then
     exit 1
 fi
 
-# check the subdomain
-# check if the dns_record field (subdomain) contains dot
+# Check the subdomain
+# Check if the dns_record field (subdomain) contains a dot
 if [[ $dns_record == *.* ]]; then
-    # if the zone_name field (domain) is not in the dns_record
+    # If the zone_name field (domain) is not in the dns_record
     if [[ $dns_record != *.$zone_name ]]; then
         echo -e "\033[0;31m [-] The Zone in DNS Record does not match the defined Zone; check it and try again."
         exit 1
     fi
-# if the dns_record (subdomain) is not complete and contains invalid characters
+# If the dns_record (subdomain) is not complete and contains invalid characters
 elif ! [[ $dns_record =~ ^[a-zA-Z0-9-]+$ ]]; then
     echo -e "\033[0;31m [-] The DNS Record contains illegal charecters, i.e., @, %, *, _, etc.; fix it and run the script again."
     exit 1
-# if the dns_record (subdomain) is not complete, complete it
+# If the dns_record (subdomain) is not complete, complete it
 else
     dns_record="$dns_record.$zone_name"
 fi
 
-# Check if DNS Records Exists
+# Check if DNS records exist
 check_record_ipv4=$(dig -t a +short ${dns_record} | tail -n1)
 check_record_ipv6=$(dig -t aaaa +short ${dns_record} | tail -n1)
 
-# get the basic data
+# Get the basic data
 ipv4=$(curl -s -X GET -4 https://ifconfig.co)
 ipv6=$(curl -s -X GET -6 https://ifconfig.co)
+
+# If the current dynamic IPs match what's already in DNS, exit the script; read more: https://github.com/namnamir/configurations-and-security-hardening/issues/9
+if [ $check_record_ipv4 == $ipv4 ]; then
+        echo -e "\033[0;37m [~] No change: The current IPv4 address ${ipv4} matches the existing DNS records ${check_record_ipv4}."
+        exit 0
+fi
+if [ $check_record_ipv6 == $ipv6 ]; then
+        echo -e "\033[0;37m [~] No change: The current IPv6 address ${ipv6} matches the existing DNS records ${check_record_ipv6}."
+        exit 0
+fi
+
+# Get the user ID
 user_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
                -H "Authorization: Bearer $api_token" \
                -H "Content-Type:application/json" \
@@ -82,7 +94,7 @@ user_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verif
 if [ $ipv4 ]; then echo -e "\033[0;32m [+] Your public IPv4 address: $ipv4"; else echo -e "\033[0;33m [!] Unable to get any public IPv4 address."; fi
 if [ $ipv6 ]; then echo -e "\033[0;32m [+] Your public IPv6 address: $ipv6"; else echo -e "\033[0;33m [!] Unable to get any public IPv6 address."; fi
 
-# check if the user API is valid and the email is correct
+# check if the user API is valid, and the email is correct
 if [ $user_id ]; then
     zone_id=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$zone_name&status=active" \
                    -H "Content-Type: application/json" \
@@ -90,11 +102,11 @@ if [ $user_id ]; then
                    -H "Authorization: Bearer $api_token" \
               | jq -r '{"result"}[] | .[0] | .id'
              )
-    # check if the zone ID is avilable
+    # check if the zone ID is available
     if [ $zone_id ]; then
         # check if there is any IP version 4
         if [ $ipv4 ]; then
-            # Check if A Record exists
+            # Check if any A record exists
             if [ -z "${check_record_ipv4}" ]; then
                 echo -e "\033[0;31m [-] No A Record is set for ${dns_record}. This should be created first!"
                 exit 1
@@ -115,10 +127,7 @@ if [ $user_id ]; then
                      --data "{\"type\":\"A\",\"name\":\"$dns_record\",\"content\":\"$ipv4\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
                 # write the result
-                echo -e "\033[0;32m [+] Updated: The IPv4 is successfully set on Cloudflare as the A Record with the value of: $ipv4."
-                exit 0
-            else
-                echo -e "\033[0;37m [~] No change: The current IPv4 address matches Cloudflare."
+                echo -e "\033[0;32m [+] Updated: The IPv4 is successfully set on Cloudflare as the A Record with the value of $ipv4."
                 exit 0
             fi
         fi
@@ -126,7 +135,7 @@ if [ $user_id ]; then
         # check if there is any IP version 6
         if [ $ipv6 ]
         then
-            # Check A Record exists
+            # Check if any A record exists
             if [ -z "${check_record_ipv6}" ]; then
                 echo -e "\033[0;31m [-] No AAAA Record called ${dns_record}. This must be created first!"
                 exit 1
@@ -147,10 +156,7 @@ if [ $user_id ]; then
                      --data "{\"type\":\"AAAA\",\"name\":\"$dns_record\",\"content\":\"$ipv6\",\"ttl\":1,\"proxied\":false}" \
                 | jq -r '.errors'
                 # write the result
-                echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of: $ipv6."
-                exit 0
-            else
-                echo -e "\033[0;37m [~] No change: The current IPv6 address matches the existing records on Cloudflare."
+                echo -e "\033[0;32m [+] Updated: The IPv6 is successfully set on Cloudflare as the AAAA Record with the value of $ipv6."
                 exit 0
             fi
         fi
