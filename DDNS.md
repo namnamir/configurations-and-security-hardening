@@ -43,7 +43,7 @@ fi
 
 # Check if jq and dig are installed
 if [ -z "$(which dig)" ] || [ -z "$(which grep)" ] || [ -z "$(which jq)" ]; then
-    echo -e "\033[0;31m [-] Either 'jq', 'dig', 'grep' is not installed. Install them by 'sudo apt install jq dnsutils grep'."
+    echo -e "\033[0;31m [-] Either 'jq', 'dig', or 'grep' is not installed. Install them by 'sudo apt install jq dnsutils grep'."
     exit 1
 fi
 
