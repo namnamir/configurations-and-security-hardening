@@ -41,10 +41,9 @@ if ps ax | grep "$0" | grep -v "$$" | grep bash | grep -v grep > /dev/null; then
     exit 1
 fi
 
-# Check if jq is installed
-check_jq=$(which jq)
-if [ -z "${check_jq}" ]; then
-    echo -e "\033[0;31m [-] jq is not installed. Install it by 'sudo apt install jq'."
+# Check if jq and dig are installed
+if [ -z "$(which dig)" ] || [ -z "$(which jq)" ]; then
+    echo -e "\033[0;31m [-] Either 'jq' or 'dig' is not installed. Install them by 'sudo apt install jq dnsutils'."
     exit 1
 fi
 
