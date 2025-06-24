@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Updates Cloudflare A and AAAA DNS records with the current public IPv4 and IPv6 addresses.
-    READ ME: https://github.com/namnamir/configurations-and-security-hardening/edit/main/DDNS.md
+    READ ME: https://github.com/namnamir/configurations-and-security-hardening/blob/main/DDNS.md
 
 .DESCRIPTION
     This script connects to the Cloudflare API to:
