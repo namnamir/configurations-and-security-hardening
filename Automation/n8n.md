@@ -45,7 +45,8 @@ mkdir -p ~/.n8n
 chown 1000:1000 ~/.n8n
 
 # Run n8n container mapping port 5678; mounting persistent volume
-docker run -dit --name n8n -p 5678:5678 -v ~/.n8n:/home/node/.n8n n8nio/n8n
+docker run -dit --name n8n -p 5678:5678 -v ~/.n8n:/home/node/.n8n -e WEBHOOK_URL=https://YOUR_DOMAIN.COM n8nio/n8n
+
 ```
 
 ---
