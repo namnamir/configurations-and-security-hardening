@@ -11,8 +11,12 @@ This guide describes how to install and run n8n workflow automation tool using [
 - Ports 80 (HTTP) and 443 (HTTPS) open on your server firewall
 
 ### Setup on Cloudflare
+
 The following images show the setup of domain on Cloudflare.
+
 ![The n8n domain DNS setup on Cloudflare](img/cloudflare-n8n-dns.png)
+and
+
 ![The n8n domain SSL setup on Cloudflare](img/cloudflare-n8n-ssl.png)
 ---
 
