@@ -1,109 +1,62 @@
-# Make Windows 10 or Windows 11 Lighter and Faster
-## Use Scripts
-Multiple scripts help you tweak your Windows; here is a list:
-### 1. [Sophia](https://github.com/farag2/Sophia-Script-for-Windows)
-### 2. [Windows Utility](https://github.com/ChrisTitusTech/winutil)
-After downloading the script, run the following command and select the desired settings.
-```powershell
-iwr -useb https://christitus.com/win | iex
-```
-### 3. [Debloater](https://github.com/Sycnex/Windows10Debloater)
-After enabling PowerShell execution by `Set-ExecutionPolicy Unrestricted -Force`, use [this](https://github.com/Sycnex/Windows10Debloater) script to remove default Windows apps and bloatware.
+# Make Windows 11 Lightweight and Fast for VMs
 
-## Do it Manually
-### 1. Change the power and screen settings <sup><sub>([More Info](https://ss64.com/nt/powercfg.html))</sub></sup>
-The following PowerShell script will do it.
-```powershell
-# change the power plan to Balanced
-powercfg.exe /s "381b4222-f694-41f0-9685-ff5bb260df2e";
+Windows 11 is heavily bloated with background telemetry, consumer applications, and services designed for slow physical hardware. When running inside a Virtual Machine for development, this bloat wastes CPU cycles, RAM, and Disk I/O. 
 
-# set the screen off for AC and DC to 5 mins
-Powercfg /Change monitor-timeout-ac 5;
-Powercfg /Change monitor-timeout-dc 5;
+Follow these steps to debloat the OS and optimize it for coding.
 
-# set the standby for AC and DC to Never
-Powercfg /Change standby-timeout-ac 0;
-Powercfg /Change standby-timeout-dc 0;
-```
-### 2. Disable unnecessary startup programs
-Press `Ctrl + Shift + Esc` to open the *Task Manager* and move to the *Startup* pane.
+## 1. The Ultimate Debloat Tool (Chris Titus Tech Utility)
+The fastest and safest way to strip Windows 11 down to its bare essentials is by using the open-source CTT Windows Utility.
 
-### 3. Turn off Windows Notifications
-The following PowerShell script will do it.
-```PowerShell
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications" -Name "ToastEnabled" -Type DWord -Value 0
+1. Right-click the Start Button and open **Terminal (Admin)** or **PowerShell (Admin)**.
+2. Run the following command:
+    ```powershell
+    irm [christitus.com/win](https://christitus.com/win) | iex
+    ```
+3. In the graphical window that appears, navigate to the **Tweaks** tab.
+4. Click the **Desktop** profile button (this selects the safest recommended tweaks for a daily-use machine).
+5. Click **Run Tweaks**.
 
-# it works just on Windows 10
-Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
-```
-#### # Do it Manually
-If you would prefer to do it manually, follow the following steps and change the settings:
--  `Settings -> System -> Notifications -> Additional settings` 
--  `Settings -> System -> Notifications -> Notifications from apps and other senders`.
+## 2. Disable VM-Killing Services
 
-### 4. Debloat Windows (Uninstall Unnecessary Programs)
-Firstly, there is a need to check installed applications in "Add & Remove Programs" and uninstall unwanted ones.
+Windows runs optimization services that are helpful for old physical hard drives but actually hurt the performance of fast, SSD-backed Virtual Machines.
 
-You can use the following script to see bloatware.
-```PowerShell
-# get the list of bloatware
-DISM /Online /Get-ProvisionedAppxPackages | Select-String Packagename;
+1. Press `Win + R`, type `services.msc`, and press Enter.
+2. Disable **SysMain** (formerly Superfetch):
+* *Reason:* It constantly pre-loads apps into RAM, wasting CPU and virtual disk I/O.
+* *Action:* Right-click -> Properties -> Startup type: **Disabled** -> Stop -> OK.
 
-# remove them one by one
-DISM /Online /Remove-ProvisionedAppxPackage /PackageName:<PACKAGE_NAME>
-```
-
-### 5. Turn off search indexing <sup><sub>([More Info](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-service))</sub></sup>
-Go to *Services* (`services.msc`) and find *Windows Search*. The following PowerShell script will do it.
-```PowerShell
-Stop-Service -Name WSearch;
-Set-Service  -Name WSearch -StartupType Disabled;
-```
-
-### 6. Change the Visual Settings
-#### 6.1. Disable **Shadows, Animations, and Visual Effects**.
-```PowerShell
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' -Name 'VisualFXSetting' -Value 2
-```
-#### 6.2. Disable **Transparency Effects**
-```PowerShell
-Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name EnableTransparency -Value 0
-```
-#### 6.3. Remove Backgrounds
-#### # Do them Manually
-If you would prefer to do it manually, follow the following steps and change the settings:
--  `Advanced System Settings (sysdm.cpl) -> Performance -> Settings -> Adjust for best performance`
--  `Settings -> Accessibility -> Transparency effects   OR   Settings -> Personalization -> Colors -> Transparency effects`
--  `Settings -> Accessibility -> Animation effects`
--  `Settings -> Personalization -> Lock screen -> Lock screen status -> None`
--  `Settings -> Personalization -> Lock screen -> Show the lock screen background picture on the sign-in screen`
--  `Settings -> Personalization -> Lock screen -> Personalize your lock screen -> Picture`
--  `Settings -> Personalization -> Lock screen -> Personalize your lock screen -> Get the fun facts, tips, tricks, and more on your lock screen`
-
-### 7. Repair Windows (if needed) without reinstallation
-```PowerShell
-# Deployment Image Service and Management Tool (DISM)
-DISM /Online /Cleanup-image /Restorehealth
-
-# System File Checker (SFC)
-sfc /scannow
-```
-
-### 9. Others
-#### 9.1. Disable DiagTracK
-Run the following commands to stop and disable the User Experiences and Telemetry (Diagnostics Tracking or DiagTracK).
-```PowerShell
-stop-service diagtrack
-set-service diagtrack -startuptype disabled
-```
-#### 9.2. Disable Auto Updates for Maps
-- `Settings -> Apps -> Offline maps -> Map updates`
-#### 9.3. Disable AutoPlay Feature for Devices
-- `Settings -> Bluetooth & devices -> AutoPlay`
+3. Disable **Windows Search**:
+* *Reason:* It constantly indexes the hard drive for slightly faster Start Menu searches, causing severe virtual disk thrashing.
+* *Action:* Right-click -> Properties -> Startup type: **Disabled** -> Stop -> OK.
 
 
----
-**Resources:**
-- https://support.microsoft.com/en-us/windows/tips-to-improve-pc-performance-in-windows-b3b3ef5b-5953-fb6a-2528-4bbed82fba96
-- https://admx.help/HKCU/Software/Policies/Microsoft/Windows/Explorer
-- https://gist.github.com/ilyaigpetrov/03506150e0a3a4104a24f7e519d42078
+## 3. Disable Xbox Game Bar
+
+Windows constantly runs gaming services in the background waiting to record gameplay.
+
+1. Open **Settings** -> **Gaming** -> **Xbox Game Bar**.
+2. Toggle the service **Off**.
+
+## 4. Optimize Visuals and Power
+
+UI animations in Windows 11 require GPU acceleration. In a VM, these look choppy and consume unnecessary resources.
+
+1. **Disable Animations:** Press the `Windows Key`, search for **Visual Effects**, and turn off **Transparency effects** and **Animation effects**.
+2. **Performance Settings:** Press the `Windows Key`, search for **Advanced System Settings**. Under the *Performance* section, click **Settings**. Choose **Adjust for best performance** (Tip: leave "Smooth edges of screen fonts" checked so your code remains legible).
+3. **Power Plan:** Search for **Choose a power plan** and set it to **High Performance**. This prevents Windows from attempting to put your virtual CPU cores to sleep.
+
+## 5. Clean Up Startup Apps
+
+Every application that launches at startup silently consumes RAM.
+
+1. Press `Ctrl + Shift + Esc` to open **Task Manager**.
+2. Go to the **Startup apps** tab (speedometer icon).
+3. Right-click and **Disable** anything not strictly necessary for the OS to run (e.g., OneDrive, Edge, Spotify, Microsoft Teams).
+
+## 6. Enable Native Remote Desktop (RDP)
+
+For the best daily coding experience, do not use the Proxmox Web Console (noVNC). The web console lacks dual-monitor support, restricts resolution, and makes clipboard sharing difficult.
+
+1. Inside the Windows VM, go to **Settings** -> **System** -> **Remote Desktop**.
+2. Toggle Remote Desktop **On**.
+3. Use the native "Remote Desktop Connection" app from your host machine to connect to the VM's IP address. This provides a native, full-screen, high-refresh-rate experience.
