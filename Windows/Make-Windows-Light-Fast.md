@@ -16,47 +16,101 @@ The fastest and safest way to strip Windows 11 down to its bare essentials is by
 4. Click the **Desktop** profile button (this selects the safest recommended tweaks for a daily-use machine).
 5. Click **Run Tweaks**.
 
-## 2. Disable VM-Killing Services
+## 2. Granular Windows Speed-up Script
 
-Windows runs optimization services that are helpful for old physical hard drives but actually hurt the performance of fast, SSD-backed Virtual Machines.
+Run this script inside **PowerShell (Admin)** or **Terminal (Admin)** to make Windows 10/11 faster.
 
-1. Press `Win + R`, type `services.msc`, and press Enter.
-2. Disable **SysMain** (formerly Superfetch):
-* *Reason:* It constantly pre-loads apps into RAM, wasting CPU and virtual disk I/O.
-* *Action:* Right-click -> Properties -> Startup type: **Disabled** -> Stop -> OK.
+```powershell
+# =====================================================================
+# WINDOWS 11 VM PERFORMANCE OPTIMIZATION SCRIPT
+# Run as Administrator
+# =====================================================================
 
-3. Disable **Windows Search**:
-* *Reason:* It constantly indexes the hard drive for slightly faster Start Menu searches, causing severe virtual disk thrashing.
-* *Action:* Right-click -> Properties -> Startup type: **Disabled** -> Stop -> OK.
+Write-Host "Starting Windows optimization optimization..." -ForegroundColor Cyan
 
+# ---------------------------------------------------------------------
+# 2. Disable VM-Killing Services
+# ---------------------------------------------------------------------
+Write-Host "Disabling SysMain and Windows Search services..." -ForegroundColor Yellow
+$Services = @("SysMain", "WSearch")
+foreach ($Service in $Services) {
+    if (Get-Service -Name $Service -ErrorAction SilentlyContinue) {
+        Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $Service -StartupType Disabled
+    }
+}
 
-## 3. Disable Xbox Game Bar
+# ---------------------------------------------------------------------
+# 3. Disable Xbox Game Bar
+# ---------------------------------------------------------------------
+Write-Host "Disabling Xbox Game Bar and Game DVR..." -ForegroundColor Yellow
+$GameDVRPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR"
+if (!(Test-Path $GameDVRPath)) { New-Item -Path $GameDVRPath -Force | Out-Null }
+Set-ItemProperty -Path $GameDVRPath -Name "AppCaptureEnabled" -Value 0 -Type DWord -Force
 
-Windows constantly runs gaming services in the background waiting to record gameplay.
+$GameConfigPath = "HKCU:\System\GameConfigStore"
+if (!(Test-Path $GameConfigPath)) { New-Item -Path $GameConfigPath -Force | Out-Null }
+Set-ItemProperty -Path $GameConfigPath -Name "GameDVR_Enabled" -Value 0 -Type DWord -Force
 
-1. Open **Settings** -> **Gaming** -> **Xbox Game Bar**.
-2. Toggle the service **Off**.
+# ---------------------------------------------------------------------
+# 4. Optimize Visuals and Power
+# ---------------------------------------------------------------------
+Write-Host "Optimizing visual effects and power plan..." -ForegroundColor Yellow
 
-## 4. Optimize Visuals and Power
+# Disable transparency effects
+$ThemesPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+if (!(Test-Path $ThemesPath)) { New-Item -Path $ThemesPath -Force | Out-Null }
+Set-ItemProperty -Path $ThemePath -Name "EnableTransparency" -Value 0 -Type DWord -Force
 
-UI animations in Windows 11 require GPU acceleration. In a VM, these look choppy and consume unnecessary resources.
+# Set system options to "Adjust for best performance"
+$VisualFxPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
+if (!(Test-Path $VisualFxPath)) { New-Item -Path $VisualFxPath -Force | Out-Null }
+Set-ItemProperty -Path $VisualFxPath -Name "VisualFXSetting" -Value 2 -Type DWord -Force
 
-1. **Disable Animations:** Press the `Windows Key`, search for **Visual Effects**, and turn off **Transparency effects** and **Animation effects**.
-2. **Performance Settings:** Press the `Windows Key`, search for **Advanced System Settings**. Under the *Performance* section, click **Settings**. Choose **Adjust for best performance** (Tip: leave "Smooth edges of screen fonts" checked so your code remains legible).
-3. **Power Plan:** Search for **Choose a power plan** and set it to **High Performance**. This prevents Windows from attempting to put your virtual CPU cores to sleep.
+# Turn off window animations
+$DesktopPath = "HKCU:\Control Panel\Desktop"
+Set-ItemProperty -Path $DesktopPath -Name "WindowMetrics" -Value 0 -ErrorAction SilentlyContinue | Out-Null
+$WindowMetricsPath = "HKCU:\Control Panel\Desktop\WindowMetrics"
+Set-ItemProperty -Path $WindowMetricsPath -Name "MinAnimate" -Value "0" -Type String -Force
 
-## 5. Clean Up Startup Apps
+# Keep font smoothing ON so code text remains perfectly readable
+Set-ItemProperty -Path $DesktopPath -Name "FontSmoothing" -Value "2" -Type String -Force
+Set-ItemProperty -Path $DesktopPath -Name "FontSmoothingType" -Value 2 -Type DWord -Force
 
-Every application that launches at startup silently consumes RAM.
+# Set Power Plan to High Performance
+powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
 
-1. Press `Ctrl + Shift + Esc` to open **Task Manager**.
-2. Go to the **Startup apps** tab (speedometer icon).
-3. Right-click and **Disable** anything not strictly necessary for the OS to run (e.g., OneDrive, Edge, Spotify, Microsoft Teams).
+# ---------------------------------------------------------------------
+# 5. Clean Up Startup Apps
+# ---------------------------------------------------------------------
+Write-Host "Removing common consumer startup bloat..." -ForegroundColor Yellow
+$BloatStartup = @("OneDrive", "Teams", "Spotify", "MicrosoftEdgeAutoLaunch", "OneDriveSetup")
+$RunPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+foreach ($Item in $BloatStartup) {
+    if (Get-ItemProperty -Path $RunPath -Name $Item -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path $RunPath -Name $Item -Force -ErrorAction SilentlyContinue
+    }
+}
 
-## 6. Enable Native Remote Desktop (RDP)
+# ---------------------------------------------------------------------
+# 6. Disable VM-Killing Services
+# ---------------------------------------------------------------------
+Stop-Service -Name "SysMain", "WSearch" -Force -ErrorAction SilentlyContinue
+Set-Service -Name "SysMain", "WSearch" -StartupType Disabled
 
-For the best daily coding experience, do not use the Proxmox Web Console (noVNC). The web console lacks dual-monitor support, restricts resolution, and makes clipboard sharing difficult.
+# ---------------------------------------------------------------------
+# 7. Disable Xbox Game Bar
+# ---------------------------------------------------------------------
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Value 0 -Force
 
-1. Inside the Windows VM, go to **Settings** -> **System** -> **Remote Desktop**.
-2. Toggle Remote Desktop **On**.
-3. Use the native "Remote Desktop Connection" app from your host machine to connect to the VM's IP address. This provides a native, full-screen, high-refresh-rate experience.
+# ---------------------------------------------------------------------
+# 8. Disable Animations & Set High-Performance Power
+# ---------------------------------------------------------------------
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "EnableTransparency" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop\WindowMetrics" -Name "MinAnimate" -Value "0" -Force
+powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+
+# =====================================================================
+Write-Host "Optimization Complete! Please restart your VM to apply changes." -ForegroundColor Green
+```
