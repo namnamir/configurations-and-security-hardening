@@ -1,116 +1,104 @@
-# Make Windows 11 Lightweight and Fast for VMs
+# ⚡ Making Windows 11 Light, Fast, and VM-Friendly
 
-Windows 11 is heavily bloated with background telemetry, consumer applications, and services designed for slow physical hardware. When running inside a Virtual Machine for development, this bloat wastes CPU cycles, RAM, and Disk I/O. 
+Windows 11 is built for consumer laptops. Out of the box, it is packed with background services, widgets, peer-to-peer sharing, and heavy animations.
 
-Follow these steps to debloat the OS and optimize it for coding.
+While modern hardware can handle this, running Windows inside a **Virtual Machine (like [Proxmox](/proxmox.md))** or using it purely for **coding and productivity** changes the rules of physics. Background tasks that seem harmless on bare-metal will aggressively consume your host's CPU, read/write cycles (IOPS), and network bandwidth.
 
-## 1. The Ultimate Debloat Tool (Chris Titus Tech Utility)
-The fastest and safest way to strip Windows 11 down to its bare essentials is by using the open-source CTT Windows Utility.
+This guide explains **what** we need to turn off, **why** it matters, and **how** to do it.
 
-1. Right-click the Start Button and open **Terminal (Admin)** or **PowerShell (Admin)**.
-2. Run the following command:
-    ```powershell
-    irm [christitus.com/win](https://christitus.com/win) | iex
-    ```
-3. In the graphical window that appears, navigate to the **Tweaks** tab.
-4. Click the **Desktop** profile button (this selects the safest recommended tweaks for a daily-use machine).
-5. Click **Run Tweaks**.
+*(If you want to skip the manual work, you can run our all-in-one automated PowerShell script located here: [Windows Tweak Script](/Windows/Tweak-Windows.ps1)*
 
-## 2. Granular Windows Speed-up Script
+---
 
-Run this script inside **PowerShell (Admin)** or **Terminal (Admin)** to make Windows 10/11 faster.
+## 1. Core System & Hypervisor Harmony
 
-```powershell
-# =====================================================================
-# WINDOWS 11 VM PERFORMANCE OPTIMIZATION SCRIPT
-# Run as Administrator
-# =====================================================================
+These are the "heavy hitters." Fixing these will stop Windows from fighting your hypervisor and instantly reclaim gigabytes of SSD space.
 
-Write-Host "Starting Windows optimization optimization..." -ForegroundColor Cyan
+### Disable Virtualization-Based Security (VBS)
 
-# ---------------------------------------------------------------------
-# 2. Disable VM-Killing Services
-# ---------------------------------------------------------------------
-Write-Host "Disabling SysMain and Windows Search services..." -ForegroundColor Yellow
-$Services = @("SysMain", "WSearch")
-foreach ($Service in $Services) {
-    if (Get-Service -Name $Service -ErrorAction SilentlyContinue) {
-        Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue
-        Set-Service -Name $Service -StartupType Disabled
-    }
-}
+* **What it is:** A security feature (Core Isolation / Memory Integrity) that uses hardware virtualization to isolate computer processes.
+* **Why we disable it:** Inside a VM, leaving this enabled forces "nested virtualization" (a hypervisor running inside a hypervisor). This causes a massive 20-30% performance penalty on CPU and disk speeds.
+* **How to do it:** * *Settings UI:* Open Windows Security -> Device Security -> Core Isolation details -> Turn off "Memory Integrity".
+* *PowerShell:* Set `EnableVirtualizationBasedSecurity` to `0` in the registry.
 
-# ---------------------------------------------------------------------
-# 3. Disable Xbox Game Bar
-# ---------------------------------------------------------------------
-Write-Host "Disabling Xbox Game Bar and Game DVR..." -ForegroundColor Yellow
-$GameDVRPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR"
-if (!(Test-Path $GameDVRPath)) { New-Item -Path $GameDVRPath -Force | Out-Null }
-Set-ItemProperty -Path $GameDVRPath -Name "AppCaptureEnabled" -Value 0 -Type DWord -Force
 
-$GameConfigPath = "HKCU:\System\GameConfigStore"
-if (!(Test-Path $GameConfigPath)) { New-Item -Path $GameConfigPath -Force | Out-Null }
-Set-ItemProperty -Path $GameConfigPath -Name "GameDVR_Enabled" -Value 0 -Type DWord -Force
 
-# ---------------------------------------------------------------------
-# 4. Optimize Visuals and Power
-# ---------------------------------------------------------------------
-Write-Host "Optimizing visual effects and power plan..." -ForegroundColor Yellow
+### Kill Fast Startup & Hibernation
 
-# Disable transparency effects
-$ThemesPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-if (!(Test-Path $ThemesPath)) { New-Item -Path $ThemesPath -Force | Out-Null }
-Set-ItemProperty -Path $ThemePath -Name "EnableTransparency" -Value 0 -Type DWord -Force
+* **What it is:** Windows saves your kernel state to a massive hidden file (`hiberfil.sys`) so physical PCs boot faster.
+* **Why we disable it:** In a VM, you rarely shut down (you use snapshots or sleep states). Fast Startup fights the Proxmox hypervisor during reboots, often causing the VM to hang forever on the "Restarting..." screen. Plus, disabling it instantly frees up 4GB-8GB of your virtual SSD.
+* **How to do it:** * Open PowerShell as Admin and type: `powercfg /h off`
 
-# Set system options to "Adjust for best performance"
-$VisualFxPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
-if (!(Test-Path $VisualFxPath)) { New-Item -Path $VisualFxPath -Force | Out-Null }
-Set-ItemProperty -Path $VisualFxPath -Name "VisualFXSetting" -Value 2 -Type DWord -Force
+### Set a Static Pagefile
 
-# Turn off window animations
-$DesktopPath = "HKCU:\Control Panel\Desktop"
-Set-ItemProperty -Path $DesktopPath -Name "WindowMetrics" -Value 0 -ErrorAction SilentlyContinue | Out-Null
-$WindowMetricsPath = "HKCU:\Control Panel\Desktop\WindowMetrics"
-Set-ItemProperty -Path $WindowMetricsPath -Name "MinAnimate" -Value "0" -Type String -Force
+* **What it is:** The Pagefile is "virtual RAM" stored on your hard drive. By default, Windows dynamically grows and shrinks this file based on current RAM usage.
+* **Why we change it:** When your VM suddenly runs out of RAM under heavy load, Windows panics and tries to instantly write a 2GB-4GB expansion file to your virtual SSD. This completely freezes the VM for several seconds. By setting a *static* size, the space is pre-allocated and expansion freezes never happen.
+* **How to do it:** * *Settings UI:* Search for "Advanced System Settings" -> Performance Settings -> Advanced tab -> Virtual memory "Change". Uncheck automatic, select Custom size, and set both Initial and Maximum to `4096` (4GB).
 
-# Keep font smoothing ON so code text remains perfectly readable
-Set-ItemProperty -Path $DesktopPath -Name "FontSmoothing" -Value "2" -Type String -Force
-Set-ItemProperty -Path $DesktopPath -Name "FontSmoothingType" -Value 2 -Type DWord -Force
+---
 
-# Set Power Plan to High Performance
-powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+## 2. Network & Telemetry (Stop the Phoning Home)
 
-# ---------------------------------------------------------------------
-# 5. Clean Up Startup Apps
-# ---------------------------------------------------------------------
-Write-Host "Removing common consumer startup bloat..." -ForegroundColor Yellow
-$BloatStartup = @("OneDrive", "Teams", "Spotify", "MicrosoftEdgeAutoLaunch", "OneDriveSetup")
-$RunPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-foreach ($Item in $BloatStartup) {
-    if (Get-ItemProperty -Path $RunPath -Name $Item -ErrorAction SilentlyContinue) {
-        Remove-ItemProperty -Path $RunPath -Name $Item -Force -ErrorAction SilentlyContinue
-    }
-}
+Windows loves to use your network in the background. Let's silence it.
 
-# ---------------------------------------------------------------------
-# 6. Disable VM-Killing Services
-# ---------------------------------------------------------------------
-Stop-Service -Name "SysMain", "WSearch" -Force -ErrorAction SilentlyContinue
-Set-Service -Name "SysMain", "WSearch" -StartupType Disabled
+### Disable Peer-to-Peer Updates (WUDO)
 
-# ---------------------------------------------------------------------
-# 7. Disable Xbox Game Bar
-# ---------------------------------------------------------------------
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -Value 0 -Force
-Set-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Value 0 -Force
+* **What it is:** Windows Update Delivery Optimization.
+* **Why we disable it:** By default, Windows acts like a BitTorrent node. It downloads updates from Microsoft and then silently uploads them to other computers on the internet. This will completely shred your server's network bridge bandwidth.
+* **How to do it:** * *Settings UI:* Settings -> Windows Update -> Advanced options -> Delivery Optimization -> Turn off "Allow downloads from other PCs".
 
-# ---------------------------------------------------------------------
-# 8. Disable Animations & Set High-Performance Power
-# ---------------------------------------------------------------------
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "EnableTransparency" -Value 0 -Force
-Set-ItemProperty -Path "HKCU:\Control Panel\Desktop\WindowMetrics" -Name "MinAnimate" -Value "0" -Force
-powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+### Stop Background UWP Apps
 
-# =====================================================================
-Write-Host "Optimization Complete! Please restart your VM to apply changes." -ForegroundColor Green
-```
+* **What it is:** Windows allows Microsoft Store apps (Calculator, Maps, Phone Link) to run suspended in the background so they launch 0.1 seconds faster.
+* **Why we disable it:** It permanently ties up idle RAM and CPU threads.
+* **How to do it:** * *Settings UI:* Settings -> Apps -> Installed Apps -> Click the `...` next to an app -> Advanced options -> Set Background apps permissions to "Never". (Our PowerShell script does this globally for all apps).
+
+---
+
+## 3. Visuals & UI (Snappy Remote Desktop)
+
+If you access your VM via Remote Desktop (RDP), the visual settings are the difference between a sluggish mess and a lightning-fast native experience.
+
+### Disable UI Animations
+
+* **What it is:** Window minimizing animations, fading menus, and transparent glass effects.
+* **Why we disable it:** RDP streams pixel changes over the network. Smooth animations force RDP to constantly encode and stream heavy video data. Disabling animations turns the stream into tiny, instantaneous static layout blocks.
+* **How to do it:** * *Settings UI:* Search for "Advanced System Settings" -> Performance Settings. Choose **"Adjust for best performance"**.
+* *Crucial Exception:* Make sure to check the boxes for **"Smooth edges of screen fonts"** and **"Show thumbnails instead of icons"** so your code and files remain highly legible.
+
+
+
+### Disable the Lock Screen Transition
+
+* **What it is:** The picture screen you have to swipe up or click before typing your password.
+* **Why we disable it:** It is an unnecessary extra click when logging into a VM via Proxmox Console or RDP.
+* **How to do it:** * *PowerShell / Registry:* Requires adding a `NoLockScreen` DWORD value to the Windows Personalization policies.
+
+---
+
+## 4. Microsoft Edge Hardening
+
+Web browsers are the single biggest resource hogs in any OS. Even if you use Chrome or Firefox, Edge runs in the background.
+
+### Aggressive Sleeping Tabs & Background Boost
+
+* **What it is:** Edge's built-in memory management.
+* **Why we change it:** We want to force Edge to release RAM for tabs you haven't looked at in 5 minutes, and we want to stop Edge from running a secret background instance when the browser is closed.
+* **How to do it:** * *Settings UI:* Open Edge Settings -> System and performance. Turn **off** "Startup boost" and "Continue running background extensions". Turn **on** "Save resources with sleeping tabs" and set the timer to 5 minutes.
+
+---
+
+## 5. The "Nuke It All" Automated Script
+
+Doing all of the above (alongside removing built-in bloatware like Xbox apps, disabling Windows Search indexing, and pinning the Windows Security tray icon) takes about 45 minutes of clicking through menus.
+
+We have compiled all of these best practices into a single, automated PowerShell script. It will:
+
+1. Ask you for a new Computer Name and custom RDP port.
+2. Apply every hypervisor and performance tweak mentioned above.
+3. Completely purge Windows 11 bloatware (Mail, Xbox, Widgets engine) via Winget.
+4. Clean your Start Menu and Taskbar.
+
+---
+
+**🚀 Ready to optimize? Run the master script here: [Windows Tweak Script](/Windows/Tweak-Windows.ps1)**
