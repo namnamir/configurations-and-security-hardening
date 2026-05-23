@@ -22,10 +22,13 @@
 .PARAMETER SkipBloat
     Skip the Appx/UWP bloatware removal section.
 
+.PARAMETER SkipOffice
+    Skip the Microsoft Office installation section.
+
 .EXAMPLE
     .\Tweak-Windows.ps1
     .\Tweak-Windows.ps1 -Mode Revert
-    .\Tweak-Windows.ps1 -SkipEdge -SkipBloat
+    .\Tweak-Windows.ps1 -SkipEdge -SkipBloat -SkipOffice
     .\Tweak-Windows.ps1 -Mode Revert -BackupFile "C:\ProgramData\TweakWindows\backup_20260522-1430.json"
 
 .NOTES
@@ -50,7 +53,8 @@ param(
     [string]$BackupFile = "",
 
     [switch]$SkipEdge,
-    [switch]$SkipBloat
+    [switch]$SkipBloat,
+    [switch]$SkipOffice
 )
 
 Set-StrictMode -Version Latest
@@ -99,6 +103,10 @@ $TcpMaxUserPort    = 65534   # Maximum ephemeral port number (default 5000 on ol
 # Edge
 $EdgeSleepingTabsTimeout = 300   # Seconds before an inactive tab is put to sleep (5 min)
 
+# Scheduled maintenance
+$WingetUpgradeDay  = "Sunday"   # Day of the week for the auto-upgrade task (Sunday..Saturday)
+$WingetUpgradeTime = "09:00"    # Time for the auto-upgrade task (24-hour HH:mm)
+
 # Services to disable (reason shown in the log)
 $ServicesToDisable = @(
     @{ Name = "SysMain";          Reason = "not useful with a fast virtual disk (Superfetch)" },
@@ -122,9 +130,8 @@ $AppsToInstall = @(
 
 # Winget package IDs to remove
 $AppsToRemove = @(
-    "Microsoft.WindowsTerminal",                  # Replaced by Preview (removed after reboot if running inside it)
-    "MicrosoftWindows.Client.WebExperience",      # Widgets engine
-    "Microsoft.OneDrive"                          # Win32; winget is the cleanest removal path
+    "Microsoft.WindowsTerminal",   # Replaced by Preview (removed after reboot if running inside it)
+    "Microsoft.OneDrive"           # Win32; winget is the cleanest removal path
 )
 
 # Appx/UWP packages to purge from all user profiles and the provisioned image.
@@ -161,7 +168,8 @@ $AppxSafeList = "^(Microsoft\.UI\.|Microsoft\.VCLibs|Microsoft\.NET\." +
                 "|Microsoft\.WindowsAppRuntime|Microsoft\.DesktopAppInstaller" +
                 "|Microsoft\.StorePurchaseApp|Microsoft\.MicrosoftEdge" +
                 "|Microsoft\.WindowsStore|ShellExperienceHost" +
-                "|StartMenuExperienceHost|Microsoft\.Windows\.Cortana)"
+                "|StartMenuExperienceHost|Microsoft\.Windows\.Cortana" +
+                "|Microsoft\.XboxGameCallableUI)"
 
 # Edge extensions to force-install via policy (users cannot remove these).
 # Format: <extension-id>;<update-url>
@@ -320,6 +328,7 @@ $Backup = [PSCustomObject]@{
     Pagefile             = $null   # original CIM pagefile configuration
     LanguageList         = $null   # serialized language list: "tag|tip1,tip2;tag|tip" format
     RdpFirewallState     = $null   # $true if "Remote Desktop" firewall group was already enabled
+    OfficeInstalled      = $null   # $true = was already installed; $false = installed by this script
 }
 
 # Write current $Backup snapshot to disk — called both mid-run and at finalize
@@ -329,7 +338,7 @@ function Save-Backup {
         $script:BackupPath = "$BackupDir\backup_$(Get-Date -Format 'yyyyMMdd-HHmm').json"
     }
     try {
-        $script:Backup | ConvertTo-Json -Depth 10 | Out-File -FilePath $script:BackupPath -Encoding utf8 -Force
+        $script:Backup | ConvertTo-Json -Depth 4 | Out-File -FilePath $script:BackupPath -Encoding utf8 -Force
     } catch {
         Write-Warn "Could not write backup to disk: $_"
     }
@@ -538,6 +547,28 @@ if ($Mode -eq "Revert") {
         } catch { Write-Fail "Could not restore language list  -  $_" }
     }
 
+    # -- Office ----------------------------------------------------
+    if ($Saved.OfficeInstalled -eq $false) {
+        $OdtSetup  = "$BackupDir\ODT\setup.exe"
+        $RemoveCfg = "$BackupDir\ODT\office-remove.xml"
+        if (Test-Path $OdtSetup) {
+            Set-Content -Path $RemoveCfg -Encoding UTF8 -Value @"
+<Configuration>
+  <Remove All="TRUE" />
+  <Display Level="None" AcceptEULA="TRUE" />
+</Configuration>
+"@
+            Write-Step "Removing Office (installed by this script)"
+            $removeProc = Start-Process -FilePath $OdtSetup `
+                -ArgumentList ('/configure "' + $RemoveCfg + '"') `
+                -Wait -PassThru -ErrorAction SilentlyContinue
+            if ($removeProc -and $removeProc.ExitCode -eq 0) { Write-OK "Office removed" }
+            else { Write-Warn "Office removal may have failed  -  check $LogDir for details" }
+        } else {
+            Write-Warn "ODT setup.exe not found at $OdtSetup  -  remove Office manually if needed"
+        }
+    }
+
     # -- Custom RDP firewall rules ----------------------------------
     if ($Saved.FirewallRules -and $Saved.FirewallRules.Count -gt 0) {
         foreach ($RuleName in $Saved.FirewallRules) {
@@ -679,7 +710,7 @@ Write-Info "Current computer name: $($env:COMPUTERNAME)"
 $NewComputerName = Read-Host "    New computer name (Enter to keep current)"
 
 $RdpPath = "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp"
-$CurrentRdpPort = (Get-ItemProperty -Path $RdpPath -Name "PortNumber" -ErrorAction SilentlyContinue).PortNumber
+$CurrentRdpPort = try { (Get-ItemProperty -Path $RdpPath -Name "PortNumber" -ErrorAction Stop).PortNumber } catch { 0 }
 if (-not $CurrentRdpPort) { $CurrentRdpPort = 3389 }
 $Backup.RdpPort = $CurrentRdpPort
 
@@ -726,7 +757,7 @@ Write-Header "Network, Remote Desktop & DNS"
 
 # PortNumber is snapshotted here separately because we only call Set-RegSafe for it
 # if the user actually changed the port  -  without this the original port has no backup entry.
-Save-RegValue -Path $RdpPath -Name "PortNumber"
+$null = Save-RegValue -Path $RdpPath -Name "PortNumber"
 
 # Enable Remote Desktop
 Set-RegSafe -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
@@ -775,12 +806,21 @@ if ($ChangeDNS) {
             Write-OK "$($Adapter.Name): DNS  $oldDns  ->  $DNS1, $DNS2"
         } catch { Write-Fail "$($Adapter.Name): could not set DNS  —  $_" }
     }
-    # Register both resolvers for DNS-over-HTTPS (native Windows 11 feature)
+    # Register both resolvers for DNS-over-HTTPS (native Windows 11 feature).
+    # Set- only modifies existing entries; Add- creates them. 1.1.1.2 is not in Windows's
+    # built-in DoH list so we must Add- first; fall back to Set- if it already exists.
     foreach ($s in $DohServers) {
-        $dohResult = Set-DnsClientDohServerAddress -ServerAddress $s.Addr -DohTemplate $s.Tpl `
-            -AllowFallbackToUdp $false -AutoUpgrade $true -ErrorAction SilentlyContinue 2>&1
-        if ($?) { Write-OK "DoH registered: $($s.Addr) -> $($s.Tpl)" }
-        else     { Write-Warn "DoH registration failed for $($s.Addr): $dohResult" }
+        try {
+            $existing = Get-DnsClientDohServerAddress -ServerAddress $s.Addr -ErrorAction SilentlyContinue
+            if ($existing) {
+                Set-DnsClientDohServerAddress -ServerAddress $s.Addr -DohTemplate $s.Tpl `
+                    -AllowFallbackToUdp $false -AutoUpgrade $true -ErrorAction Stop | Out-Null
+            } else {
+                Add-DnsClientDohServerAddress -ServerAddress $s.Addr -DohTemplate $s.Tpl `
+                    -AllowFallbackToUdp $false -AutoUpgrade $true -ErrorAction Stop | Out-Null
+            }
+            Write-OK "DoH registered: $($s.Addr) -> $($s.Tpl)"
+        } catch { Write-Warn "DoH registration failed for $($s.Addr): $_" }
     }
 }
 
@@ -851,6 +891,12 @@ if ($TerminalStableSkipped) {
 
 foreach ($App in $AppsToInstall) {
     Write-Step "Installing $($App.Id)"
+    # Pre-check: ask winget if the package is already installed (avoids fragile exit-code guessing)
+    $listOut = winget list --id $App.Id --exact --accept-source-agreements 2>&1
+    if ($listOut | Where-Object { $_ -match [regex]::Escape($App.Id) }) {
+        Write-Skipped "$($App.Id)  (already installed)"
+        continue
+    }
     if (![string]::IsNullOrEmpty($App.Override)) {
         winget install --id $App.Id --exact --accept-source-agreements `
             --accept-package-agreements --override "$($App.Override)" 2>&1 | Out-Null
@@ -858,8 +904,11 @@ foreach ($App in $AppsToInstall) {
         winget install --id $App.Id --exact --accept-source-agreements `
             --accept-package-agreements --silent 2>&1 | Out-Null
     }
-    if ($LASTEXITCODE -eq 0) { Write-OK "Installed $($App.Id)" }
-    else { Write-Warn "Install may have failed for $($App.Id)  -  check the log for details" }
+    if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010 -or $LASTEXITCODE -eq 1641) {
+        Write-OK "Installed $($App.Id)"
+    } else {
+        Write-Warn "Install may have failed for $($App.Id)  -  check the log for details"
+    }
 }
 
 Write-Step "Upgrading all installed packages"
@@ -873,7 +922,7 @@ try {
     $WingetPath = (Get-Command winget -ErrorAction Stop).Source
     $Action   = New-ScheduledTaskAction -Execute $WingetPath `
                     -Argument "upgrade --all --silent --accept-package-agreements --accept-source-agreements"
-    $Trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "09:00"
+    $Trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $WingetUpgradeDay -At $WingetUpgradeTime
     $Settings = New-ScheduledTaskSettingsSet `
                     -ExecutionTimeLimit  (New-TimeSpan -Hours 1) `
                     -RunOnlyIfNetworkAvailable `
@@ -883,7 +932,7 @@ try {
         -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal `
         -Description "Upgrades all winget packages silently every Sunday at 9 AM." `
         -Force -ErrorAction Stop | Out-Null
-    Write-OK "Scheduled task registered: 'Winget Weekly Upgrade' (Sundays 09:00, SYSTEM)"
+    Write-OK "Scheduled task registered: 'Winget Weekly Upgrade' ($WingetUpgradeDay ${WingetUpgradeTime}, SYSTEM)"
 } catch {
     Write-Warn "Could not register scheduled task: $_"
 }
@@ -902,21 +951,96 @@ if (-not $NpmCmd) {
 if ($NpmCmd) {
     $NpmGlobal = "$env:ProgramData\npm-global"
     if (!(Test-Path $NpmGlobal)) { New-Item -Path $NpmGlobal -ItemType Directory -Force | Out-Null }
+
+    # Set the machine-wide npm global prefix so every user's "npm install -g" lands here,
+    # not in the elevated admin session's per-user %APPDATA%\npm.
+    npm config set prefix "$NpmGlobal" --global 2>&1 | Out-Null
+
+    # Ensure PATH covers the prefix root (where npm puts .cmd wrappers on Windows)
     $machinePath = [Environment]::GetEnvironmentVariable('PATH', 'Machine')
     if ($machinePath -notlike "*$NpmGlobal*") {
         [Environment]::SetEnvironmentVariable('PATH', "$machinePath;$NpmGlobal", 'Machine')
         $env:PATH = $env:PATH + ";$NpmGlobal"
     }
-    npm install -g --prefix "$NpmGlobal" "@google/gemini-cli" 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) { Write-OK "Gemini CLI installed to $NpmGlobal (system-wide)" }
-    else { Write-Warn "npm install for Gemini CLI may have failed  -  check the log" }
+
+    npm install -g "@google/gemini-cli" 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-OK "Gemini CLI installed to $NpmGlobal (open a new terminal to use it)"
+    } else {
+        Write-Warn "npm install for Gemini CLI may have failed  -  check the log"
+    }
 } else {
     Write-Warn "npm not found  -  Gemini CLI skipped. After reboot run: npm install -g @google/gemini-cli"
 }
 
 
 # =====================================================================
-# 5. Taskbar Pins
+# 5. Microsoft Office  -  Word, Excel, PowerPoint via ODT
+# =====================================================================
+
+if (-not $SkipOffice) {
+    Write-Header "Microsoft Office"
+
+    $OdtDir    = "$BackupDir\ODT"
+    $OdtSetup  = "$OdtDir\setup.exe"
+    $OfficeCfg = "$OdtDir\office-config.xml"
+    if (!(Test-Path $OdtDir)) { New-Item -Path $OdtDir -ItemType Directory -Force | Out-Null }
+
+    # Click-to-Run configuration key is present on any modern Office / M365 install
+    $Backup.OfficeInstalled = Test-Path "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration"
+
+    if ($Backup.OfficeInstalled) {
+        Write-Skipped "Office already installed  -  nothing to do"
+    } else {
+        Write-Step "Extracting Office Deployment Tool"
+        winget install --id Microsoft.OfficeDeploymentTool --exact `
+            --accept-source-agreements --accept-package-agreements `
+            --override ('/quiet /extract:"' + $OdtDir + '"') 2>&1 | Out-Null
+
+        if (!(Test-Path $OdtSetup)) {
+            Write-Warn "ODT setup.exe not found at $OdtSetup  -  Office install skipped"
+        } else {
+            # Minimal config: only Word, Excel, PowerPoint; everything else excluded.
+            # Product ID O365ProPlusRetail covers personal M365, business M365, and retail M365 Apps.
+            # Change the Language ID if a different locale is needed.
+            Set-Content -Path $OfficeCfg -Encoding UTF8 -Value @"
+<Configuration>
+  <Add OfficeClientEdition="64" Channel="Current">
+    <Product ID="O365ProPlusRetail">
+      <Language ID="en-us" />
+      <ExcludeApp ID="Access" />
+      <ExcludeApp ID="Groove" />
+      <ExcludeApp ID="Lync" />
+      <ExcludeApp ID="OneNote" />
+      <ExcludeApp ID="OneDrive" />
+      <ExcludeApp ID="Outlook" />
+      <ExcludeApp ID="Publisher" />
+      <ExcludeApp ID="Teams" />
+    </Product>
+  </Add>
+  <Property Name="FORCEAPPSHUTDOWN" Value="TRUE" />
+  <Display Level="None" AcceptEULA="TRUE" />
+  <Updates Enabled="TRUE" Channel="Current" />
+  <Logging Level="Standard" Path="$LogDir" />
+</Configuration>
+"@
+            Write-Step "Installing Office  -  downloads ~1 GB, allow 5-15 minutes"
+            $officeProc = Start-Process -FilePath $OdtSetup `
+                -ArgumentList ('/configure "' + $OfficeCfg + '"') `
+                -Wait -PassThru -ErrorAction Stop
+            if ($officeProc.ExitCode -eq 0) {
+                Write-OK "Office installed  -  Word, Excel, PowerPoint"
+            } else {
+                Write-Warn "Office install may have failed (exit $($officeProc.ExitCode))  -  check $LogDir for details"
+            }
+        }
+    }
+} else {
+    Write-Skipped "Microsoft Office install  (-SkipOffice flag set)"
+}
+
+# =====================================================================
+# 6. Taskbar Pins
 #    LayoutModification.xml is the Microsoft-supported method for
 #    pinning apps to the taskbar. It takes effect on the next sign-in,
 #    which happens automatically after the reboot at the end of the script.
@@ -976,7 +1100,7 @@ if ($TargetProfile) {
 }
 
 # =====================================================================
-# 6. Appx/UWP Bloatware Removal
+# 7. Appx/UWP Bloatware Removal
 # =====================================================================
 
 if (-not $SkipBloat) {
@@ -1011,7 +1135,7 @@ if (-not $SkipBloat) {
 }
 
 # =====================================================================
-# 7. Microsoft Edge Hardening
+# 8. Microsoft Edge Hardening
 # =====================================================================
 
 if (-not $SkipEdge) {
@@ -1071,7 +1195,7 @@ if (-not $SkipEdge) {
 }
 
 # =====================================================================
-# 8. SMB Hardening
+# 9. SMB Hardening
 # =====================================================================
 
 Write-Header "SMB Hardening"
@@ -1097,13 +1221,13 @@ try {
 } catch { Write-Warn "Could not enforce SMB signing  -  $_" }
 
 # =====================================================================
-# 9. Hypervisor & Storage Optimization
+# 10. Hypervisor & Storage Optimization
 # =====================================================================
 
 Write-Header "KVM / Proxmox Optimization"
 
 # Hibernation wastes disk space equal to the VM's RAM size and serves no purpose in a VM
-$hibReg = (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Power" -Name "HibernateEnabled" -ErrorAction SilentlyContinue).HibernateEnabled
+$hibReg = try { (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Power" -Name "HibernateEnabled" -ErrorAction Stop).HibernateEnabled } catch { $null }
 $Backup.Hibernation = ($hibReg -ne 0)   # $true = was enabled
 Write-Step "Hibernation before: $(if ($Backup.Hibernation) { 'enabled' } else { 'already off' })"
 $pfcfgResult = powercfg /h off 2>&1
@@ -1132,10 +1256,14 @@ if ($PlanList -match $HighPerfGUID) {
 # Memory compression adds CPU overhead inside the VM for a task the hypervisor already handles
 $Backup.MemoryCompression = (Get-MMAgent -ErrorAction SilentlyContinue).MemoryCompression
 Write-Step "Memory compression before: $(if ($Backup.MemoryCompression) { 'enabled' } else { 'already off' })"
-try {
-    Disable-MMAgent -MemoryCompression -ErrorAction Stop
-    Write-OK "Memory compression disabled"
-} catch { Write-Warn "Could not disable memory compression  —  $_" }
+if ($Backup.MemoryCompression) {
+    try {
+        Disable-MMAgent -MemoryCompression -ErrorAction Stop
+        Write-OK "Memory compression disabled"
+    } catch { Write-Warn "Could not disable memory compression  —  $_" }
+} else {
+    Write-Skipped "Memory compression already off"
+}
 
 # Disable NTFS last-access timestamp updates  -  reduces write I/O on every file read.
 # Backed up automatically via Set-RegSafe so revert restores the exact original value.
@@ -1143,8 +1271,8 @@ Set-RegSafe -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "Ntf
 Write-OK "NTFS last-access timestamps disabled"
 
 # System Restore is redundant when Proxmox handles snapshots at the hypervisor level
-$srDisabled = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" `
-    -Name "DisableSR" -ErrorAction SilentlyContinue).DisableSR
+$srDisabled = try { (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" `
+    -Name "DisableSR" -ErrorAction Stop).DisableSR } catch { $null }
 $Backup.SystemRestoreEnabled = ($srDisabled -ne 1)   # $true = was enabled before this run
 Write-Step "System Restore before: $(if ($Backup.SystemRestoreEnabled) { 'enabled' } else { 'already disabled' })"
 try {
@@ -1218,14 +1346,14 @@ try {
 }
 
 # =====================================================================
-# 10. NTP Time Synchronization
+# 11. NTP Time Synchronization
 # =====================================================================
 
 Write-Header "NTP Time Synchronization"
 
 # Capture current NTP peer list before changing so revert can restore it exactly.
 $ntpParamsPath = "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Parameters"
-$currentNtpPeer = (Get-ItemProperty $ntpParamsPath -Name "NtpServer" -ErrorAction SilentlyContinue).NtpServer
+$currentNtpPeer = try { (Get-ItemProperty $ntpParamsPath -Name "NtpServer" -ErrorAction Stop).NtpServer } catch { $null }
 $Backup.NtpServer = if ($currentNtpPeer) { $currentNtpPeer } else { "time.windows.com,0x9" }
 Write-Step "NTP server before: $($Backup.NtpServer)"
 
@@ -1243,7 +1371,7 @@ try {
 }
 
 # =====================================================================
-# 11. UI, Telemetry & Privacy
+# 12. UI, Telemetry & Privacy
 # =====================================================================
 
 Write-Header "UI, Telemetry & Privacy"
@@ -1287,7 +1415,13 @@ Set-RegSafe -Path $EA -Name "Start_HideRecentlyAddedApps" -Value 1
 Set-RegSafe -Path $EA -Name "LaunchTo"                    -Value 1   # Open Explorer to This PC
 
 # Taskbar
-Set-RegSafe -Path $EA -Name "TaskbarDa"        -Value 0   # Remove widgets button (user preference)
+# TaskbarDa is protected on Windows 11 24H2+; the HKLM policy below is the authoritative removal.
+# Use inline write so we can emit Warn (not Fail) when the key is locked.
+$null = Save-RegValue -Path $EA -Name "TaskbarDa"
+try {
+    Set-ItemProperty -Path $EA -Name "TaskbarDa" -Value 0 -Type DWord -Force -ErrorAction Stop
+    Write-OK "TaskbarDa = 0"
+} catch { Write-Warn "TaskbarDa: write blocked (protected on 24H2+) — HKLM policy covers widget removal" }
 Set-RegSafe -Path $EA -Name "TaskbarAnimations" -Value 0
 
 # Belt-and-suspenders: machine-level policy disables the widgets feed regardless of HKCU.
@@ -1354,7 +1488,7 @@ Set-RegSafe -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnloc
 # Keep the Windows Security shield visible in the taskbar tray (not buried in the overflow arrow)
 Get-ChildItem -Path "$HKCU\Control Panel\NotifyIconSettings" -ErrorAction SilentlyContinue |
     ForEach-Object {
-        $ExePath = (Get-ItemProperty $_.PSPath -Name ExecutablePath -ErrorAction SilentlyContinue).ExecutablePath
+        $ExePath = try { (Get-ItemProperty $_.PSPath -Name ExecutablePath -ErrorAction Stop).ExecutablePath } catch { $null }
         if ($ExePath -match "SecurityHealthSystray\.exe") {
             Set-RegSafe -Path $_.PSPath -Name "IsPromoted" -Value 1
             Write-OK "Windows Security icon pinned to tray"
@@ -1374,7 +1508,7 @@ if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
 Write-OK "Explorer restarted"
 
 # =====================================================================
-# 12. Keyboard & Language
+# 13. Keyboard & Language
 # =====================================================================
 
 Write-Header "Keyboard & Language"
@@ -1395,7 +1529,7 @@ $Secondary = New-WinUserLanguageList $SecondaryLang
 $Secondary[0].InputMethodTips.Clear()
 $Secondary[0].InputMethodTips.Add($SecondaryLangTip)
 $LangList += $Secondary[0]
-Set-WinUserLanguageList $LangList -Force
+Set-WinUserLanguageList $LangList -Force -WarningAction SilentlyContinue
 
 # Keep local keyboard layout when connecting via RDP instead of inheriting the client's layout
 Set-RegSafe -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout" `
@@ -1434,7 +1568,7 @@ Set-RegSafe -Path "$HKCU\Software\Microsoft\Windows\CurrentVersion\SettingSync\G
 Write-OK "Keyboard layouts locked: $PrimaryLang + $SecondaryLang"
 
 # =====================================================================
-# 13. Windows Defender Hardening
+# 14. Windows Defender Hardening
 # =====================================================================
 
 Write-Header "Windows Defender Hardening"
@@ -1476,7 +1610,7 @@ try {
 } catch { Write-Warn "Could not apply ASR rules  -  $_" }
 
 # =====================================================================
-# 14. Services & Startup Cleanup
+# 15. Services & Startup Cleanup
 # =====================================================================
 
 Write-Header "Services & Startup Cleanup"
@@ -1486,6 +1620,10 @@ foreach ($Svc in $ServicesToDisable) {
     $s = Get-Service -Name $Svc.Name -ErrorAction SilentlyContinue
     if ($s) {
         $oldType = $s.StartType.ToString()
+        if ($oldType -eq 'Disabled') {
+            Write-Skipped "$($Svc.Name): already Disabled"
+            continue
+        }
         $Backup.Services.Add([PSCustomObject]@{ Name = $Svc.Name; StartupType = $oldType })
         Stop-Service -Name $Svc.Name -Force    -ErrorAction SilentlyContinue
         Set-Service  -Name $Svc.Name -StartupType Disabled -ErrorAction SilentlyContinue
