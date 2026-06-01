@@ -213,7 +213,7 @@ if ([string]::IsNullOrEmpty($Domain)) {
     $zone_check_path = "/zones?name=$($Domain)"
     $ZoneCheck = Invoke-CloudflareApi -Method GET -Path $zone_check_path
     if (-not $ZoneCheck -or $ZoneCheck.result.Count -eq 0) {
-        Write-Log "The provided Domain '$Domain' is not recognized as a Cloudflare zone. Please ensure you are providing the root domain (e.g., 'nikooee.us' instead of 'a.nikooee.us'). Terminating script." "ERROR" Red
+        Write-Log "The provided Domain '$Domain' is not recognized as a Cloudflare zone. Please ensure you are providing the root domain (e.g., 'site.com' instead of 'sub.site.com'). Terminating script." "ERROR" Red
         return
     }
     $script:zone_id = $ZoneCheck.result[0].id
